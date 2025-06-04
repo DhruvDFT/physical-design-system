@@ -1,4 +1,290 @@
-# app_simple.py - Physical Design Interview System (No Database Version)
+# Routes
+@app.route('/')
+def index():
+    """Serve the web interface"""
+    return '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physical Design Interview System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fa; color: #333; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 0; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 40px; }
+        h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .subtitle { font-size: 1.2em; opacity: 0.9; }
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .card { background: white; border-radius: 10px; padding: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 5px 20px rgba(0,0,0,0.15); }
+        .card h2 { color: #667eea; margin-bottom: 15px; font-size: 1.5em; }
+        .stats { display: flex; justify-content: space-between; margin-top: 20px; }
+        .stat { text-align: center; padding: 10px; }
+        .stat-value { font-size: 2em; font-weight: bold; color: #667eea; }
+        .stat-label { font-size: 0.9em; color: #666; margin-top: 5px; }
+        .form-section { background: white; border-radius: 10px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 40px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; }
+        input, select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 16px; transition: border-color 0.3s ease; }
+        input:focus, select:focus { outline: none; border-color: #667eea; }
+        button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 30px; border-radius: 5px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s ease; }
+        button:hover { transform: scale(1.05); }
+        button:active { transform: scale(0.98); }
+        .assignments-list { background: white; border-radius: 10px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .assignment-item { border-bottom: 1px solid #eee; padding: 20px 0; display: flex; justify-content: space-between; align-items: center; }
+        .assignment-item:last-child { border-bottom: none; }
+        .assignment-info h3 { color: #333; margin-bottom: 5px; }
+        .assignment-meta { color: #666; font-size: 0.9em; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.85em; font-weight: 600; }
+        .badge-intermediate { background: #e3f2fd; color: #1976d2; }
+        .badge-advanced { background: #f3e5f5; color: #7b1fa2; }
+        .badge-expert { background: #ffebee; color: #c62828; }
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .error { background: #ffebee; color: #c62828; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .success { background: #e8f5e9; color: #2e7d32; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .topic-icon { width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 15px; }
+        .icon-floorplanning { background: #e3f2fd; color: #1976d2; }
+        .icon-placement { background: #f3e5f5; color: #7b1fa2; }
+        .icon-routing { background: #e8f5e9; color: #388e3c; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal-content { background: white; border-radius: 10px; padding: 30px; max-width: 600px; margin: 50px auto; max-height: 80vh; overflow-y: auto; }
+        .questions-list { margin-top: 20px; }
+        .question { background: #f5f7fa; padding: 15px; border-radius: 5px; margin-bottom: 10px; border-left: 4px solid #667eea; }
+        .close-modal { float: right; font-size: 28px; font-weight: bold; cursor: pointer; color: #999; }
+        .close-modal:hover { color: #333; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎯 Physical Design Interview System</h1>
+        <p class="subtitle">Comprehensive Assessment Platform for VLSI Engineers</p>
+    </header>
+    <div class="container">
+        <div class="dashboard">
+            <div class="card">
+                <div class="topic-icon icon-floorplanning">📐</div>
+                <h2>Floorplanning</h2>
+                <p>Master the art of chip floorplanning with practical scenarios</p>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value">25</div>
+                        <div class="stat-label">Questions</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">Levels</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="topic-icon icon-placement">🎲</div>
+                <h2>Placement</h2>
+                <p>Optimize cell placement for timing, power, and area</p>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value">25</div>
+                        <div class="stat-label">Questions</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">Levels</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="topic-icon icon-routing">🔌</div>
+                <h2>Routing</h2>
+                <p>Master routing techniques and timing closure strategies</p>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value">25</div>
+                        <div class="stat-label">Questions</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">Levels</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="form-section">
+            <h2>Create New Assignment</h2>
+            <div id="message"></div>
+            <form id="createAssignmentForm">
+                <div class="form-group">
+                    <label for="engineerId">Engineer ID</label>
+                    <input type="text" id="engineerId" name="engineerId" placeholder="e.g., eng001" required>
+                </div>
+                <div class="form-group">
+                    <label for="topic">Topic</label>
+                    <select id="topic" name="topic" required>
+                        <option value="">Select a topic</option>
+                        <option value="floorplanning">Floorplanning</option>
+                        <option value="placement">Placement</option>
+                        <option value="routing">Routing</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="experience">Experience Level (Years)</label>
+                    <select id="experience" name="experience" required>
+                        <option value="3">3-4 Years (Intermediate)</option>
+                        <option value="5">5-7 Years (Advanced)</option>
+                        <option value="8">8+ Years (Expert)</option>
+                    </select>
+                </div>
+                <button type="submit">Create Assignment</button>
+                <button type="button" onclick="viewSampleQuestions()" style="margin-left: 10px; background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);">View Sample Questions</button>
+            </form>
+        </div>
+        <div class="assignments-list">
+            <h2>Recent Assignments</h2>
+            <button onclick="refreshAssignments()" style="float: right; margin-top: -40px;">🔄 Refresh Expired</button>
+            <div id="assignmentsList" class="loading">Loading assignments...</div>
+        </div>
+    </div>
+    <div id="questionModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle">Sample Questions</h2>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+    <script>
+        const API_BASE_URL = window.location.origin;
+        document.addEventListener("DOMContentLoaded", function() { loadAssignments(); });
+        document.getElementById("createAssignmentForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            const formData = {
+                engineer_id: document.getElementById("engineerId").value,
+                topic: document.getElementById("topic").value,
+                experience_years: parseInt(document.getElementById("experience").value)
+            };
+            try {
+                const response = await fetch(API_BASE_URL + "/api/assignments/create", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(formData)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showMessage("success", "Assignment created successfully! ID: " + data.assignment.id);
+                    document.getElementById("createAssignmentForm").reset();
+                    loadAssignments();
+                } else {
+                    showMessage("error", data.error || "Failed to create assignment");
+                }
+            } catch (error) {
+                showMessage("error", "Error: " + error.message);
+            }
+        });
+        async function loadAssignments() {
+            try {
+                const response = await fetch(API_BASE_URL + "/api/assignments");
+                const data = await response.json();
+                if (data.success) displayAssignments(data.assignments);
+            } catch (error) {
+                document.getElementById("assignmentsList").innerHTML = "<p class=error>Failed to load assignments</p>";
+            }
+        }
+        function displayAssignments(assignments) {
+            const container = document.getElementById("assignmentsList");
+            if (assignments.length === 0) {
+                container.innerHTML = "<p>No assignments found. Create one above!</p>";
+                return;
+            }
+            container.innerHTML = assignments.map(assignment => {
+                const dueDate = new Date(assignment.due_date);
+                const difficulty = getDifficultyFromPoints(assignment.points);
+                return "<div class=assignment-item><div class=assignment-info><h3>" + assignment.title + "</h3><div class=assignment-meta>Engineer: " + assignment.engineer_id + " | Due: " + dueDate.toLocaleDateString() + " | Points: " + assignment.points + "</div></div><div><span class=badge\\ badge-" + difficulty.toLowerCase() + ">" + difficulty + "</span><button onclick=viewAssignment('" + assignment.id + "') style='margin-left:10px;padding:8px 20px'>View</button></div></div>";
+            }).join("");
+        }
+        async function viewAssignment(assignmentId) {
+            try {
+                const response = await fetch(API_BASE_URL + "/api/assignments/" + assignmentId);
+                const data = await response.json();
+                if (data.success) {
+                    const assignment = data.assignment;
+                    const questions = assignment.questions;
+                    document.getElementById("modalTitle").textContent = assignment.title;
+                    document.getElementById("modalContent").innerHTML = "<p><strong>Engineer:</strong> " + assignment.engineer_id + "</p><p><strong>Due Date:</strong> " + new Date(assignment.due_date).toLocaleDateString() + "</p><p><strong>Points:</strong> " + assignment.points + "</p><div class=questions-list><h3>Questions:</h3>" + questions.map((q, i) => "<div class=question><strong>Q" + (i + 1) + ":</strong> " + q + "</div>").join("") + "</div>";
+                    document.getElementById("questionModal").style.display = "block";
+                }
+            } catch (error) {
+                showMessage("error", "Failed to load assignment details");
+            }
+        }
+        async function viewSampleQuestions() {
+            const topic = document.getElementById("topic").value;
+            if (!topic) {
+                showMessage("error", "Please select a topic first");
+                return;
+            }
+            try {
+                const response = await fetch(API_BASE_URL + "/api/questions/" + topic);
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById("modalTitle").textContent = "Sample Questions: " + topic.charAt(0).toUpperCase() + topic.slice(1);
+                    document.getElementById("modalContent").innerHTML = "<div class=questions-list>" + data.sample_questions.map((q, i) => "<div class=question><strong>Sample " + (i + 1) + ":</strong> " + q + "</div>").join("") + "</div><p style='margin-top:20px;color:#666'>These are 5 sample questions from a pool of " + data.total_available + " questions.</p>";
+                    document.getElementById("questionModal").style.display = "block";
+                }
+            } catch (error) {
+                showMessage("error", "Failed to load sample questions");
+            }
+        }
+        async function refreshAssignments() {
+            try {
+                const response = await fetch(API_BASE_URL + "/api/assignments/refresh", { method: "POST" });
+                const data = await response.json();
+                if (data.success) {
+                    showMessage("success", data.message);
+                    loadAssignments();
+                }
+            } catch (error) {
+                showMessage("error", "Failed to refresh assignments");
+            }
+        }
+        function closeModal() { document.getElementById("questionModal").style.display = "none"; }
+        function showMessage(type, message) {
+            const messageDiv = document.getElementById("message");
+            messageDiv.className = type;
+            messageDiv.textContent = message;
+            setTimeout(() => { messageDiv.textContent = ""; messageDiv.className = ""; }, 5000);
+        }
+        function getDifficultyFromPoints(points) {
+            if (points >= 200) return "Expert";
+            if (points >= 175) return "Advanced";
+            return "Intermediate";
+        }
+        window.onclick = function(event) {
+            const modal = document.getElementById("questionModal");
+            if (event.target == modal) modal.style.display = "none";
+        }
+    </script>
+</body>
+</html>'''
+
+@app.route('/api')
+def api_docs():
+    """API documentation endpoint"""
+    return jsonify({
+        "message": "Physical Design Interview System API",
+        "version": "1.0-simple",
+        "status": "running",
+        "endpoints": {
+            "GET /": "Web interface",
+            "GET /api": "This API documentation",
+            "GET /health": "Health check",
+            "POST /api/assignments/create": "Create new assignment",
+            "GET /api/assignments": "List all assignments",
+            "GET /api/assignments/<id>": "Get specific assignment",
+            "GET /api/questions/<topic>": "Get sample questions for topic",
+            "POST /api/assignments/refresh": "Refresh expired assignments",
+            "GET /api/analytics": "Get system analytics"
+        },
+        "topics": ["floorplanning", "placement", "routing"],
+        "timestamp": datetime.now().isoformat()
+    })# app_simple.py - Physical Design Interview System (No Database Version)
 # Simplified API that works without database setup
 
 import os
