@@ -1,52 +1,16 @@
-# app.py - Physical Design Interview System with Login
+# app.py - Physical Design Interview System (Simplified Working Version)
 import os
-import random
 import json
-from datetime import datetime, timedelta
-from flask import Flask, request, jsonify, render_template_string, redirect, session
-from werkzeug.security import generate_password_hash, check_password_hash
-import logging
+from flask import Flask, request, jsonify
 
-# Initialize Flask app
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'pd-interview-secret-key-2024')
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Store assignments in memory
+assignments = {}
+counter = 0
 
-# In-memory storage
-users_db = {}
-assignments_db = {}
-notifications_db = {}
-assignment_counter = 0
-
-# Initialize default users
-def init_users():
-    """Initialize default admin and student users"""
-    # Admin user
-    users_db['admin'] = {
-        'username': 'admin',
-        'password': generate_password_hash('admin123'),
-        'role': 'admin',
-        'email': 'admin@pdis.com',
-        'experience_years': 10
-    }
-    
-    # Student users
-    for i in range(1, 4):
-        username = f'eng00{i}'
-        users_db[username] = {
-            'username': username,
-            'password': generate_password_hash('password123'),
-            'role': 'student',
-            'email': f'{username}@pdis.com',
-            'experience_years': 3 + i
-        }
-    logger.info("Default users initialized")
-
-# Complete Physical Design Questions (3+ Years)
-PD_QUESTIONS = {
+# Physical Design Questions (3+ Years) - All 15 per topic
+QUESTIONS = {
     "floorplanning": [
         "You have a 5mm x 5mm die with 4 hard macros (each 1mm x 0.8mm) and need to achieve 70% utilization. Describe your macro placement strategy considering timing and power delivery.",
         "Your design has setup timing violations on paths crossing from left to right. The floorplan has macros placed randomly. How would you reorganize the floorplan to improve timing?",
@@ -100,365 +64,77 @@ PD_QUESTIONS = {
     ]
 }
 
-# Helper Functions
-def create_assignment(engineer_id, topic):
-    """Create a new assignment"""
-    global assignment_counter
+@app.route('/')
+def home():
+    """API documentation"""
+    return jsonify({
+        "message": "Physical Design Interview System API",
+        "status": "running",
+        "total_questions": 45,
+        "topics": list(QUESTIONS.keys()),
+        "endpoints": {
+            "GET /": "This documentation",
+            "GET /health": "Health check",
+            "POST /api/create-assignment": "Create new assignment",
+            "GET /api/assignments": "List all assignments",
+            "GET /api/questions/<topic>": "Get all questions for a topic"
+        }
+    })
+
+@app.route('/health')
+def health():
+    """Health check"""
+    return jsonify({"status": "healthy", "assignments": len(assignments)})
+
+@app.route('/api/create-assignment', methods=['POST'])
+def create_assignment():
+    """Create assignment with all 15 questions"""
+    global counter
     
-    if topic not in PD_QUESTIONS:
-        return None
+    data = request.get_json() or {}
+    engineer_id = data.get('engineer_id', 'eng001')
+    topic = data.get('topic', 'floorplanning')
     
-    user = users_db.get(engineer_id)
-    if not user:
-        return None
+    if topic not in QUESTIONS:
+        return jsonify({"error": "Invalid topic"}), 400
     
-    experience = user.get('experience_years', 3)
+    counter += 1
+    assignment_id = f"PD_{topic}_{counter}"
     
-    # Get all 15 questions for the topic
-    questions = PD_QUESTIONS[topic]
-    
-    # Determine parameters based on experience
-    if experience >= 8:
-        difficulty = "Expert"
-        points = 200
-        due_days = 21
-    elif experience >= 5:
-        difficulty = "Advanced"
-        points = 175
-        due_days = 14
-    else:
-        difficulty = "Intermediate"
-        points = 150
-        due_days = 10
-    
-    assignment_counter += 1
-    assignment_id = f"PD_{topic}_{engineer_id}_{assignment_counter}"
-    
-    assignment = {
+    assignments[assignment_id] = {
         'id': assignment_id,
         'engineer_id': engineer_id,
         'topic': topic,
-        'questions': questions,
-        'points': points,
-        'difficulty': difficulty,
-        'status': 'pending',
-        'created_date': datetime.now().isoformat(),
-        'due_date': (datetime.now() + timedelta(days=due_days)).isoformat()
+        'questions': QUESTIONS[topic],  # All 15 questions
+        'created_at': str(os.environ.get('TIMESTAMP', 'now'))
     }
     
-    assignments_db[assignment_id] = assignment
-    
-    # Add notification
-    add_notification(engineer_id, f"New {topic} assignment created", f"{len(questions)} questions, due in {due_days} days")
-    
-    return assignment
-
-def add_notification(user_id, title, message):
-    """Add a notification for a user"""
-    if user_id not in notifications_db:
-        notifications_db[user_id] = []
-    
-    notifications_db[user_id].append({
-        'title': title,
-        'message': message,
-        'created_at': datetime.now().isoformat(),
-        'read': False
-    })
-
-# Routes
-@app.route('/')
-def home():
-    """Home page - redirect based on login status"""
-    if 'user' in session:
-        if session.get('role') == 'admin':
-            return redirect('/admin')
-        else:
-            return redirect('/student')
-    return redirect('/login')
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    """Login page"""
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        user = users_db.get(username)
-        if user and check_password_hash(user['password'], password):
-            session['user'] = username
-            session['role'] = user['role']
-            session['experience'] = user.get('experience_years', 3)
-            
-            if user['role'] == 'admin':
-                return redirect('/admin')
-            else:
-                return redirect('/student')
-        else:
-            error = "Invalid credentials"
-    else:
-        error = None
-    
-    html = '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>PD Interview System - Login</title>
-        <style>
-            body { font-family: Arial; background: #f0f0f0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-            .login-box { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 400px; }
-            h1 { text-align: center; color: #333; }
-            input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
-            button { width: 100%; padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
-            button:hover { background: #45a049; }
-            .info { background: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-            .error { color: red; text-align: center; }
-        </style>
-    </head>
-    <body>
-        <div class="login-box">
-            <h1>🎯 Physical Design Interview System</h1>
-            <div class="info">
-                <strong>Demo Credentials:</strong><br>
-                Admin: admin / admin123<br>
-                Student: eng001 / password123
-            </div>
-            ''' + (f'<div class="error">{error}</div>' if error else '') + '''
-            <form method="POST">
-                <input type="text" name="username" placeholder="Username" required>
-                <input type="password" name="password" placeholder="Password" required>
-                <button type="submit">Login</button>
-            </form>
-        </div>
-    </body>
-    </html>
-    '''
-    
-    return html if not error else html.replace('</div>', f'</div><div class="error">{error}</div>', 1)
-
-@app.route('/logout')
-def logout():
-    """Logout"""
-    session.clear()
-    return redirect('/login')
-
-@app.route('/admin')
-def admin_dashboard():
-    """Admin dashboard"""
-    if 'user' not in session or session.get('role') != 'admin':
-        return redirect('/login')
-    
-    # Get stats
-    total_engineers = len([u for u in users_db.values() if u['role'] == 'student'])
-    total_assignments = len(assignments_db)
-    pending_assignments = len([a for a in assignments_db.values() if a['status'] == 'pending'])
-    
-    # Get recent assignments
-    recent_assignments = sorted(assignments_db.values(), key=lambda x: x['created_date'], reverse=True)[:5]
-    
-    html = f'''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Admin Dashboard</title>
-        <style>
-            body {{ font-family: Arial; margin: 0; background: #f5f5f5; }}
-            .header {{ background: #4CAF50; color: white; padding: 20px; }}
-            .container {{ max-width: 1200px; margin: 20px auto; padding: 0 20px; }}
-            .card {{ background: white; padding: 20px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }}
-            .stats {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }}
-            .stat {{ background: white; padding: 20px; text-align: center; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }}
-            .stat h2 {{ margin: 0; color: #4CAF50; font-size: 36px; }}
-            .stat p {{ margin: 5px 0; color: #666; }}
-            button {{ background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }}
-            button:hover {{ background: #45a049; }}
-            select, input {{ padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 5px; }}
-            table {{ width: 100%; border-collapse: collapse; }}
-            th, td {{ padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }}
-            th {{ background: #f5f5f5; }}
-            .logout {{ float: right; color: white; text-decoration: none; }}
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <h1>Admin Dashboard<a href="/logout" class="logout">Logout</a></h1>
-        </div>
-        
-        <div class="container">
-            <div class="stats">
-                <div class="stat">
-                    <h2>{total_engineers}</h2>
-                    <p>Engineers</p>
-                </div>
-                <div class="stat">
-                    <h2>{total_assignments}</h2>
-                    <p>Total Assignments</p>
-                </div>
-                <div class="stat">
-                    <h2>{pending_assignments}</h2>
-                    <p>Pending</p>
-                </div>
-                <div class="stat">
-                    <h2>45</h2>
-                    <p>Questions (3 topics)</p>
-                </div>
-            </div>
-            
-            <div class="card">
-                <h2>Create Assignment</h2>
-                <form action="/admin/create-assignment" method="POST">
-                    <select name="engineer_id" required>
-                        <option value="">Select Engineer</option>
-    '''
-    
-    for username, user in users_db.items():
-        if user['role'] == 'student':
-            html += f'<option value="{username}">{username} ({user["experience_years"]} years)</option>'
-    
-    html += '''
-                    </select>
-                    <select name="topic" required>
-                        <option value="">Select Topic</option>
-                        <option value="floorplanning">Floorplanning</option>
-                        <option value="placement">Placement</option>
-                        <option value="routing">Routing</option>
-                    </select>
-                    <button type="submit">Create Assignment</button>
-                </form>
-            </div>
-            
-            <div class="card">
-                <h2>Recent Assignments</h2>
-                <table>
-                    <tr>
-                        <th>ID</th>
-                        <th>Engineer</th>
-                        <th>Topic</th>
-                        <th>Status</th>
-                        <th>Points</th>
-                    </tr>
-    '''
-    
-    for assignment in recent_assignments:
-        html += f'''
-                    <tr>
-                        <td>{assignment['id']}</td>
-                        <td>{assignment['engineer_id']}</td>
-                        <td>{assignment['topic']}</td>
-                        <td>{assignment['status']}</td>
-                        <td>{assignment['points']}</td>
-                    </tr>
-        '''
-    
-    html += '''
-                </table>
-            </div>
-        </div>
-    </body>
-    </html>
-    '''
-    
-    return html
-
-@app.route('/admin/create-assignment', methods=['POST'])
-def admin_create_assignment():
-    """Create assignment"""
-    if 'user' not in session or session.get('role') != 'admin':
-        return redirect('/login')
-    
-    engineer_id = request.form.get('engineer_id')
-    topic = request.form.get('topic')
-    
-    if engineer_id and topic:
-        create_assignment(engineer_id, topic)
-    
-    return redirect('/admin')
-
-@app.route('/student')
-def student_dashboard():
-    """Student dashboard"""
-    if 'user' not in session:
-        return redirect('/login')
-    
-    username = session['user']
-    
-    # Get student's assignments
-    my_assignments = [a for a in assignments_db.values() if a['engineer_id'] == username]
-    
-    # Get notifications
-    my_notifications = notifications_db.get(username, [])[-5:]  # Last 5
-    
-    html = f'''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Student Dashboard</title>
-        <style>
-            body {{ font-family: Arial; margin: 0; background: #f5f5f5; }}
-            .header {{ background: #2196F3; color: white; padding: 20px; }}
-            .container {{ max-width: 1200px; margin: 20px auto; padding: 0 20px; }}
-            .card {{ background: white; padding: 20px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }}
-            .assignment {{ background: white; padding: 20px; margin: 10px 0; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-left: 5px solid #2196F3; }}
-            .question {{ background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }}
-            .badge {{ display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 12px; }}
-            .pending {{ background: #FFC107; color: #333; }}
-            .logout {{ float: right; color: white; text-decoration: none; }}
-            h3 {{ color: #333; }}
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <h1>Student Dashboard - {username}<a href="/logout" class="logout">Logout</a></h1>
-        </div>
-        
-        <div class="container">
-            <div class="card">
-                <h2>My Assignments</h2>
-    '''
-    
-    if my_assignments:
-        for assignment in my_assignments:
-            html += f'''
-                <div class="assignment">
-                    <h3>{assignment['topic'].title()} Assignment <span class="badge pending">{assignment['status']}</span></h3>
-                    <p>Points: {assignment['points']} | Difficulty: {assignment['difficulty']} | Due: {assignment['due_date'][:10]}</p>
-                    <h4>Questions (15):</h4>
-            '''
-            
-            for i, question in enumerate(assignment['questions'], 1):
-                html += f'<div class="question"><strong>Q{i}:</strong> {question}</div>'
-            
-            html += '</div>'
-    else:
-        html += '<p>No assignments yet.</p>'
-    
-    html += '''
-            </div>
-        </div>
-    </body>
-    </html>
-    '''
-    
-    return html
-
-@app.route('/api/health')
-def health():
-    """Health check"""
     return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'users': len(users_db),
-        'assignments': len(assignments_db)
+        'success': True,
+        'assignment_id': assignment_id,
+        'questions_count': len(QUESTIONS[topic])
     })
 
-# Initialize users on startup
-init_users()
+@app.route('/api/assignments')
+def list_assignments():
+    """List all assignments"""
+    return jsonify({
+        'count': len(assignments),
+        'assignments': list(assignments.values())
+    })
 
-# Create some demo assignments
-if len(assignments_db) == 0:
-    create_assignment('eng001', 'floorplanning')
-    create_assignment('eng001', 'placement')
+@app.route('/api/questions/<topic>')
+def get_questions(topic):
+    """Get all 15 questions for a topic"""
+    if topic not in QUESTIONS:
+        return jsonify({"error": "Invalid topic"}), 400
+    
+    return jsonify({
+        'topic': topic,
+        'count': len(QUESTIONS[topic]),
+        'questions': QUESTIONS[topic]
+    })
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    logger.info(f"Starting Physical Design Interview System on port {port}")
     app.run(host='0.0.0.0', port=port, debug=False)
