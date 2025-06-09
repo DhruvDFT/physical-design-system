@@ -25,13 +25,13 @@ engineer_question_sets = {}
 # Initialize users
 def init_users():
     # Admin
-#    users['admin'] = {
-#        'id': 'admin',
-#        'username': 'admin',
-#        'password': hash_password('Vibhuaya@3006'),
-#        'is_admin': True,
-#        'experience_years': 3
-#    }
+physical-design-system-production-d2ea.up.railway.app#    users['admin'] = {
+        'id': 'admin',
+        'username': 'admin',
+        'password': hash_password('Vibhuaya@3006'),
+        'is_admin': True,
+        'experience_years': 3
+    }
     
     # 5 Engineers
     for i in range(1, 6):
@@ -277,13 +277,7 @@ def login():
             <h1>🎯 PD Interview System</h1>
             <p style="text-align: center;">15 Questions Assessment</p>
             
-            <div class="info">
-                <strong>Demo Credentials:</strong><br>
-                Admin: admin / Vibhuaya@3006<br>
-                Students: eng001-eng005 / password123
-            </div>
             
-            {f'<p class="error">{error}</p>' if error else ''}
             
             <form method="POST">
                 <input type="text" name="username" placeholder="Username" required>
@@ -322,7 +316,7 @@ def admin_dashboard():
                 margin: 0;
             }}
             .header {{
-                background: #4CAF50;
+                background: #4caf50;
                 color: white;
                 padding: 20px;
             }}
