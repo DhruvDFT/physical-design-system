@@ -30,7 +30,14 @@ ANSWER_KEYWORDS = {
         24: ["variants", "high-performance", "low-power", "common floorplan", "flexibility", "constraints", "trade-offs", "parameterized", "derivatives", "reuse"],
         25: ["security", "hardware", "isolation", "shielding", "tamper", "side-channel", "physical attacks", "sensors", "mesh", "boundaries"],
         26: ["test modes", "BIST", "scan", "access", "TAP", "compression", "controllers", "routing", "multiplexing", "coverage"],
-        27: ["chiplet", "die-to-die", "interface", "micro-b# app.py - Physical Design Interview System (3 Questions Version)
+        27: ["chiplet", "die-to-die", "interface", "micro-bumps", "alignment", "pitch", "PHY placement", "signal integrity", "power delivery", "yield"],
+        28: ["repeater", "buffer", "planning", "stages", "delay", "slew", "placement", "resources", "prediction", "optimization"],
+        29: ["aspect ratio", "pin placement", "package", "constraints", "IO planning", "bump map", "escape", "redistribution", "signal groups", "power"],
+        # Set 3 keywords (questions 30-44)
+        30: ["multi-core", "cache", "latency", "coherency", "mesh", "ring", "placement", "distance", "bandwidth", "arbitration"],
+        31: ["reconfiguration", "partial", "regions", "boundaries", "static logic", "isolation", "clocking", "routing", "constraints", "bitstream"],
+        32: ["hard macro", "timing models", "uncertainty", "margins", "interface", "budgeting", "constraints", "abstraction", "black box", "validation"],
+        33: ["HBM", "memory interface", "PHY", "channels", "bump planning", "signal integrity", "power",# app.py - Physical Design Interview System (3 Questions Version)
 import os
 import json
 from datetime import datetime, timedelta
@@ -369,7 +376,7 @@ def get_questions_for_engineer(engineer_id, topic):
 def get_keyword_index(engineer_id, question_index):
     """Get the correct keyword index based on engineer's question set"""
     set_index = engineer_question_sets.get(engineer_id, 0)
-    return set_index * 3 + question_index  # Each set has 3 questions
+    return set_index * 15 + question_index  # Each set has 15 questions
 
 # Scoring rubric
 SCORING_RUBRIC = {
@@ -440,7 +447,7 @@ def create_assignment(engineer_id, topic):
     
     notifications[engineer_id].append({
         'title': f'New {topic} Assignment',
-        'message': f'3 questions for 3+ years experience, due in 3 days',
+        'message': f'15 questions for 3+ years experience, due in 3 days',
         'created_at': datetime.now().isoformat()
     })
     
@@ -1040,7 +1047,7 @@ def admin_dashboard():
             html += f'''
                 <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0;">
                     <h4>{a["id"]} - {a["engineer_id"]} - {a["topic"].title()}</h4>
-                    <p>Submitted: All 3 answers | Auto-score calculated</p>
+                    <p>Submitted: All 15 answers | Auto-score calculated</p>
                     <a href="/admin/review/{a["id"]}"><button>Review & Score</button></a>
                 </div>
             '''
@@ -1076,7 +1083,7 @@ def admin_dashboard():
                 <td>{a["engineer_id"]}</td>
                 <td>{a["topic"]}</td>
                 <td><span class="badge badge-{a["status"]}">{a["status"]}</span></td>
-                <td>{a.get("total_score", "-")}/30</td>
+                <td>{a.get("total_score", "-")}/150</td>
                 <td>{action}</td>
             </tr>
         '''
@@ -1115,7 +1122,7 @@ def admin_review(assignment_id):
     if request.method == 'POST':
         # Save final scores
         total_score = 0
-        for i in range(3):  # 3 questions
+        for i in range(15):  # 15 questions
             score = request.form.get(f'score_{i}', '0')
             try:
                 final_score = int(score)
@@ -1222,7 +1229,7 @@ def admin_publish(assignment_id):
     
     notifications[engineer_id].append({
         'title': f'{assignment["topic"].title()} Assignment Scored',
-        'message': f'Your assignment has been evaluated. Score: {assignment["total_score"]}/30',
+        'message': f'Your assignment has been evaluated. Score: {assignment["total_score"]}/150',
         'created_at': datetime.now().isoformat()
     })
     
@@ -1273,7 +1280,7 @@ def student_dashboard():
             '''
             
             if a['status'] == 'published':
-                html += f'<p><strong>Score: {a["total_score"]}/30</strong> (Scored by: {a.get("scored_by", "Admin")})</p>'
+                html += f'<p><strong>Score: {a["total_score"]}/150</strong> (Scored by: {a.get("scored_by", "Admin")})</p>'
                 html += f'<a href="/student/assignment/{a["id"]}"><button>View Results</button></a>'
             elif a['status'] in ['submitted', 'under_review']:
                 html += '<p>Your submission is being reviewed...</p>'
@@ -1303,17 +1310,17 @@ def student_assignment(assignment_id):
     if request.method == 'POST' and assignment['status'] == 'pending':
         # Save answers
         answers = {}
-        for i in range(3):  # 3 questions
+        for i in range(15):  # 15 questions
             answer = request.form.get(f'answer_{i}', '').strip()
             if answer:
                 answers[str(i)] = answer
         
-        if len(answers) == 3:  # All questions answered
+        if len(answers) == 15:  # All questions answered
             assignment['answers'] = answers
             assignment['status'] = 'submitted'
             
             # Calculate auto-scores
-            for i in range(3):
+            for i in range(15):
                 answer = answers.get(str(i), '')
                 assignment['auto_scores'][str(i)] = calculate_auto_score(answer, assignment['topic'], i, engineer_id)
         
@@ -1339,7 +1346,7 @@ def student_assignment(assignment_id):
     '''
     
     if assignment['status'] == 'published':
-        html += f'<p><strong>Total Score: {assignment["total_score"]}/30</strong></p>'
+        html += f'<p><strong>Total Score: {assignment["total_score"]}/150</strong></p>'
     
     if assignment['status'] == 'pending':
         html += '<form method="POST">'
