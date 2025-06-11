@@ -53,69 +53,210 @@ users = {}
 assignments = {}
 assignment_counter = 0
 
-# Enhanced questions database
+# Enhanced questions database with 10 questions per topic
 QUESTIONS_DB = {
     "floorplanning": [
+        # Update all question levels to "experienced" for 3+ years
         {
             "text": "You have a 5mm x 5mm die with 4 hard macros (each 1mm x 0.8mm) and need to achieve 70% utilization. Describe your macro placement strategy considering timing and power delivery.",
-            "level": "intermediate",
+            "level": "experienced",
             "points": 10,
             "keywords": ["macro", "timing", "power", "utilization", "placement"]
         },
         {
             "text": "Your design has setup timing violations on paths crossing from left to right. The floorplan has macros placed randomly. How would you reorganize the floorplan to improve timing?",
-            "level": "intermediate", 
+            "level": "experienced", 
             "points": 10,
             "keywords": ["timing", "violations", "floorplan", "macros", "reorganize"]
         },
         {
             "text": "During floorplan, you notice routing congestion in the center region. What are 3 specific techniques you would use to reduce congestion without major timing impact?",
-            "level": "beginner",
+            "level": "experienced",
             "points": 10,
             "keywords": ["congestion", "routing", "techniques", "timing"]
+        },
+        {
+            "text": "Your design has 3 voltage domains (0.9V core, 1.2V IO, 0.7V retention). Explain how you would plan the floorplan to minimize level shifter count and power grid complexity.",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["voltage", "domains", "level", "shifter", "power", "grid"]
+        },
+        {
+            "text": "You need to place 12 memory instances (8 SRAMs, 4 ROMs) in your design. What factors would you consider for their placement, and how would you verify floorplan quality?",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["memory", "SRAM", "ROM", "placement", "verification"]
+        },
+        {
+            "text": "Your floorplan review shows IR drop violations exceeding 50mV in certain regions. Describe your approach to fix this through floorplan changes and power grid improvements.",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["IR", "drop", "violations", "power", "grid", "floorplan"]
+        },
+        {
+            "text": "You're told to reduce die area by 15% while maintaining timing closure. What floorplan modifications would you make and what risks would you monitor?",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["area", "reduction", "timing", "closure", "risks", "modifications"]
+        },
+        {
+            "text": "Your design has mixed-signal blocks requiring 60dB isolation from digital switching noise. How would you handle their placement and what guard techniques would you use?",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["mixed", "signal", "isolation", "noise", "guard", "techniques"]
+        },
+        {
+            "text": "During early floorplan, how would you estimate routing congestion and what tools/techniques help predict routability issues before placement?",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["congestion", "estimation", "routability", "prediction", "tools"]
+        },
+        {
+            "text": "Your hierarchical design has 5 major blocks with complex timing constraints between them. Explain your approach to partition-level floorplanning and interface planning.",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["hierarchical", "partition", "interface", "timing", "constraints"]
         }
     ],
     "placement": [
         {
             "text": "Your placement run shows timing violations on 20 critical paths with negative slack up to -50ps. Describe your systematic approach to fix these violations.",
-            "level": "intermediate",
+            "level": "experienced",
             "points": 10,
             "keywords": ["timing", "violations", "slack", "critical", "systematic"]
         },
         {
             "text": "You're seeing routing congestion hotspots after placement in 2-3 regions. What placement adjustments would you make to improve routability?",
-            "level": "intermediate",
+            "level": "experienced",
             "points": 10,
             "keywords": ["congestion", "placement", "routability", "adjustments"]
         },
         {
             "text": "Your design has high-fanout nets (>500 fanout) causing placement issues. How would you handle these nets during placement optimization?",
-            "level": "advanced",
+            "level": "experienced",
             "points": 10,
             "keywords": ["fanout", "nets", "placement", "optimization"]
+        },
+        {
+            "text": "Compare global placement vs detailed placement - what specific problems does each solve and when would you iterate between them?",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["global", "detailed", "placement", "iterate", "problems"]
+        },
+        {
+            "text": "Your placement shows leakage power 20% higher than target. What placement techniques would you use to reduce power while maintaining timing?",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["leakage", "power", "reduction", "timing", "techniques"]
+        },
+        {
+            "text": "You have a multi-voltage design with 3 voltage islands. Describe your placement strategy for cells near domain boundaries and level shifter placement.",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["multi", "voltage", "islands", "boundaries", "level", "shifter"]
+        },
+        {
+            "text": "Your timing report shows 150 hold violations scattered across the design. How would you address this through placement without affecting setup timing?",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["hold", "violations", "placement", "setup", "timing"]
+        },
+        {
+            "text": "During placement, you notice certain instances are creating routes longer than 500um. What tools and techniques help identify and fix such placement issues?",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["long", "routes", "instances", "tools", "techniques"]
+        },
+        {
+            "text": "Your design has 200+ clock gating cells. Explain their optimal placement strategy and impact on both power and timing closure.",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["clock", "gating", "placement", "power", "timing"]
+        },
+        {
+            "text": "You're working with a design that has both high-performance (1GHz) and low-power (100MHz) modes. How does this affect your placement strategy and optimization targets?",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["performance", "modes", "strategy", "optimization", "targets"]
         }
     ],
     "routing": [
         {
             "text": "After global routing, you have 500 DRC violations (spacing, via, width). Describe your systematic approach to resolve these violations efficiently.",
-            "level": "intermediate",
+            "level": "experienced",
             "points": 10,
             "keywords": ["DRC", "violations", "spacing", "systematic"]
         },
         {
             "text": "Your design has 10 differential pairs for high-speed signals. Explain your routing strategy to maintain 100-ohm impedance and minimize skew.",
-            "level": "advanced",
+            "level": "experienced",
             "points": 10,
             "keywords": ["differential", "impedance", "skew", "routing"]
         },
         {
             "text": "You're seeing timing degradation after detailed routing compared to placement timing. What causes this and how would you recover the timing?",
-            "level": "intermediate",
+            "level": "experienced",
             "points": 10,
             "keywords": ["timing", "degradation", "routing", "placement"]
+        },
+        {
+            "text": "Your router is struggling with congestion in certain regions leading to 5% routing non-completion. What techniques would you use to achieve 100% routing?",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["congestion", "completion", "routing", "techniques"]
+        },
+        {
+            "text": "Describe your approach to power/ground routing for a 200A peak current design. How do you ensure adequate current carrying capacity and low IR drop?",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["power", "ground", "current", "capacity", "IR", "drop"]
+        },
+        {
+            "text": "Your design has specific layer constraints (no routing on M1 except local connections, M2-M3 for signal, M4-M6 for power). How does this impact your routing strategy?",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["layer", "constraints", "routing", "strategy", "metal"]
+        },
+        {
+            "text": "You have crosstalk violations on 50 critical nets causing functional failures. Explain your routing techniques to minimize crosstalk and meet noise requirements.",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["crosstalk", "violations", "noise", "routing", "techniques"]
+        },
+        {
+            "text": "Your clock distribution network requires <50ps skew across 10,000 flops. Describe clock routing methodology and skew optimization techniques.",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["clock", "skew", "distribution", "optimization", "methodology"]
+        },
+        {
+            "text": "During routing, some power nets are showing electromigration violations. How would you address current density issues through routing changes and via sizing?",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["electromigration", "current", "density", "via", "sizing"]
+        },
+        {
+            "text": "You need to route in a 7nm design with double patterning constraints. Explain the challenges and your approach to handle LELE (Litho-Etch-Litho-Etch) decomposition issues.",
+            "level": "experienced",
+            "points": 10,
+            "keywords": ["double", "patterning", "LELE", "decomposition", "7nm"]
         }
     ]
 }
+
+def safe_get_questions(engineer_id, topic):
+    """Get questions for experienced engineers (3+ years) - no smart selection needed"""
+    try:
+        questions = QUESTIONS_DB.get(topic, [])
+        if not questions:
+            return []
+        
+        # Simply return first 3 questions for all engineers (3+ years experience)
+        # All questions are designed for experienced level (3+ years)
+        return questions[:3]
+    except Exception:
+        # Fallback to first 3 questions
+        return QUESTIONS_DB.get(topic, [])[:3]
 
 def safe_get_questions(engineer_id, topic):
     """Safely get questions based on engineer experience"""
@@ -217,13 +358,13 @@ def safe_init_users():
                 'experience_years': 5
             }
         
-        # Engineer users with varied experience
+        # Engineer users - all have 3+ years experience as required
         engineers_data = [
-            {'id': 'eng001', 'exp': 2},
+            {'id': 'eng001', 'exp': 3},
             {'id': 'eng002', 'exp': 4}, 
-            {'id': 'eng003', 'exp': 6},
+            {'id': 'eng003', 'exp': 5},
             {'id': 'eng004', 'exp': 3},
-            {'id': 'eng005', 'exp': 5}
+            {'id': 'eng005', 'exp': 4}
         ]
         
         eng_password = hash_password('password123')
@@ -467,7 +608,7 @@ def admin_dashboard():
                 level = 'Mid'
             else:
                 level = 'Senior'
-            engineer_options += f'<option value="{eng["id"]}">{eng["username"]} ({level} - {exp_years}y)</option>'
+                            engineer_options += f'<option value="{eng["id"]}">{eng["username"]} (Experienced - {exp_years}y)</option>'
         
         # Generate submitted assignments
         submitted_html = ''
@@ -610,7 +751,7 @@ def admin_dashboard():
         
         <div class="card">
             <div class="card-header">
-                <h2>🎯 Create Smart Assessment</h2>
+                <h2>🎯 Create Assessment (3+ Years Experience)</h2>
             </div>
             <div class="card-body">
                 <form method="POST" action="/admin/create">
