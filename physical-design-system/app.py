@@ -1,1455 +1,498 @@
-# app.py - Ultra-Safe PD Interview System for Railway
+# app.py - Minimal Working PD System
 import os
 import hashlib
 from datetime import datetime, timedelta
+from flask import Flask, request, redirect, session
 
-# Import Flask with explicit error handling
-try:
-    from flask import Flask, request, redirect, session
-except ImportError as e:
-    print(f"Flask import error: {e}")
-    exit(1)
-
-# Create app with minimal config
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'pd-interview-secret-2024')
+app.secret_key = 'pd-secret-key'
 
-# Disable ALL logging completely to prevent Railway errors
-import sys
-import logging
-
-# Multiple layers of logging disabling
-logging.disable(logging.CRITICAL)
-logging.getLogger().disabled = True
-logging.getLogger('werkzeug').disabled = True
-
-# Disable Flask's built-in logger
-if hasattr(app, 'logger'):
-    app.logger.disabled = True
-    app.logger.setLevel(logging.CRITICAL)
-
-# Redirect stderr to prevent any log output
-class NullWriter:
-    def write(self, txt): pass
-    def flush(self): pass
-
-sys.stderr = NullWriter()
-
-# Safe password functions
-def hash_password(password):
-    try:
-        return hashlib.sha256(str(password).encode('utf-8')).hexdigest()
-    except Exception:
-        return None
-
-def check_password(hashed, password):
-    try:
-        return hashed == hashlib.sha256(str(password).encode('utf-8')).hexdigest()
-    except Exception:
-        return False
-
-# Global storage - simple and safe
+# Global data
 users = {}
 assignments = {}
-assignment_counter = 0
+counter = 0
 
-# Enhanced questions database with 10 questions per topic
-QUESTIONS_DB = {
+# Questions - 10 per topic, 3+ experience level
+QUESTIONS = {
     "floorplanning": [
-        # Update all question levels to "experienced" for 3+ years
-        {
-            "text": "You have a 5mm x 5mm die with 4 hard macros (each 1mm x 0.8mm) and need to achieve 70% utilization. Describe your macro placement strategy considering timing and power delivery.",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["macro", "timing", "power", "utilization", "placement"]
-        },
-        {
-            "text": "Your design has setup timing violations on paths crossing from left to right. The floorplan has macros placed randomly. How would you reorganize the floorplan to improve timing?",
-            "level": "experienced", 
-            "points": 10,
-            "keywords": ["timing", "violations", "floorplan", "macros", "reorganize"]
-        },
-        {
-            "text": "During floorplan, you notice routing congestion in the center region. What are 3 specific techniques you would use to reduce congestion without major timing impact?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["congestion", "routing", "techniques", "timing"]
-        },
-        {
-            "text": "Your design has 3 voltage domains (0.9V core, 1.2V IO, 0.7V retention). Explain how you would plan the floorplan to minimize level shifter count and power grid complexity.",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["voltage", "domains", "level", "shifter", "power", "grid"]
-        },
-        {
-            "text": "You need to place 12 memory instances (8 SRAMs, 4 ROMs) in your design. What factors would you consider for their placement, and how would you verify floorplan quality?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["memory", "SRAM", "ROM", "placement", "verification"]
-        },
-        {
-            "text": "Your floorplan review shows IR drop violations exceeding 50mV in certain regions. Describe your approach to fix this through floorplan changes and power grid improvements.",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["IR", "drop", "violations", "power", "grid", "floorplan"]
-        },
-        {
-            "text": "You're told to reduce die area by 15% while maintaining timing closure. What floorplan modifications would you make and what risks would you monitor?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["area", "reduction", "timing", "closure", "risks", "modifications"]
-        },
-        {
-            "text": "Your design has mixed-signal blocks requiring 60dB isolation from digital switching noise. How would you handle their placement and what guard techniques would you use?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["mixed", "signal", "isolation", "noise", "guard", "techniques"]
-        },
-        {
-            "text": "During early floorplan, how would you estimate routing congestion and what tools/techniques help predict routability issues before placement?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["congestion", "estimation", "routability", "prediction", "tools"]
-        },
-        {
-            "text": "Your hierarchical design has 5 major blocks with complex timing constraints between them. Explain your approach to partition-level floorplanning and interface planning.",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["hierarchical", "partition", "interface", "timing", "constraints"]
-        }
+        "You have a 5mm x 5mm die with 4 hard macros (each 1mm x 0.8mm) and need to achieve 70% utilization. Describe your macro placement strategy considering timing and power delivery.",
+        "Your design has setup timing violations on paths crossing from left to right. The floorplan has macros placed randomly. How would you reorganize the floorplan to improve timing?",
+        "During floorplan, you notice routing congestion in the center region. What are 3 specific techniques you would use to reduce congestion without major timing impact?",
+        "Your design has 3 voltage domains (0.9V core, 1.2V IO, 0.7V retention). Explain how you would plan the floorplan to minimize level shifter count and power grid complexity.",
+        "You need to place 12 memory instances (8 SRAMs, 4 ROMs) in your design. What factors would you consider for their placement, and how would you verify floorplan quality?",
+        "Your floorplan review shows IR drop violations exceeding 50mV in certain regions. Describe your approach to fix this through floorplan changes and power grid improvements.",
+        "You're told to reduce die area by 15% while maintaining timing closure. What floorplan modifications would you make and what risks would you monitor?",
+        "Your design has mixed-signal blocks requiring 60dB isolation from digital switching noise. How would you handle their placement and what guard techniques would you use?",
+        "During early floorplan, how would you estimate routing congestion and what tools/techniques help predict routability issues before placement?",
+        "Your hierarchical design has 5 major blocks with complex timing constraints between them. Explain your approach to partition-level floorplanning and interface planning."
     ],
     "placement": [
-        {
-            "text": "Your placement run shows timing violations on 20 critical paths with negative slack up to -50ps. Describe your systematic approach to fix these violations.",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["timing", "violations", "slack", "critical", "systematic"]
-        },
-        {
-            "text": "You're seeing routing congestion hotspots after placement in 2-3 regions. What placement adjustments would you make to improve routability?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["congestion", "placement", "routability", "adjustments"]
-        },
-        {
-            "text": "Your design has high-fanout nets (>500 fanout) causing placement issues. How would you handle these nets during placement optimization?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["fanout", "nets", "placement", "optimization"]
-        },
-        {
-            "text": "Compare global placement vs detailed placement - what specific problems does each solve and when would you iterate between them?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["global", "detailed", "placement", "iterate", "problems"]
-        },
-        {
-            "text": "Your placement shows leakage power 20% higher than target. What placement techniques would you use to reduce power while maintaining timing?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["leakage", "power", "reduction", "timing", "techniques"]
-        },
-        {
-            "text": "You have a multi-voltage design with 3 voltage islands. Describe your placement strategy for cells near domain boundaries and level shifter placement.",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["multi", "voltage", "islands", "boundaries", "level", "shifter"]
-        },
-        {
-            "text": "Your timing report shows 150 hold violations scattered across the design. How would you address this through placement without affecting setup timing?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["hold", "violations", "placement", "setup", "timing"]
-        },
-        {
-            "text": "During placement, you notice certain instances are creating routes longer than 500um. What tools and techniques help identify and fix such placement issues?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["long", "routes", "instances", "tools", "techniques"]
-        },
-        {
-            "text": "Your design has 200+ clock gating cells. Explain their optimal placement strategy and impact on both power and timing closure.",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["clock", "gating", "placement", "power", "timing"]
-        },
-        {
-            "text": "You're working with a design that has both high-performance (1GHz) and low-power (100MHz) modes. How does this affect your placement strategy and optimization targets?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["performance", "modes", "strategy", "optimization", "targets"]
-        }
+        "Your placement run shows timing violations on 20 critical paths with negative slack up to -50ps. Describe your systematic approach to fix these violations.",
+        "You're seeing routing congestion hotspots after placement in 2-3 regions. What placement adjustments would you make to improve routability?",
+        "Your design has high-fanout nets (>500 fanout) causing placement issues. How would you handle these nets during placement optimization?",
+        "Compare global placement vs detailed placement - what specific problems does each solve and when would you iterate between them?",
+        "Your placement shows leakage power 20% higher than target. What placement techniques would you use to reduce power while maintaining timing?",
+        "You have a multi-voltage design with 3 voltage islands. Describe your placement strategy for cells near domain boundaries and level shifter placement.",
+        "Your timing report shows 150 hold violations scattered across the design. How would you address this through placement without affecting setup timing?",
+        "During placement, you notice certain instances are creating routes longer than 500um. What tools and techniques help identify and fix such placement issues?",
+        "Your design has 200+ clock gating cells. Explain their optimal placement strategy and impact on both power and timing closure.",
+        "You're working with a design that has both high-performance (1GHz) and low-power (100MHz) modes. How does this affect your placement strategy and optimization targets?"
     ],
     "routing": [
-        {
-            "text": "After global routing, you have 500 DRC violations (spacing, via, width). Describe your systematic approach to resolve these violations efficiently.",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["DRC", "violations", "spacing", "systematic"]
-        },
-        {
-            "text": "Your design has 10 differential pairs for high-speed signals. Explain your routing strategy to maintain 100-ohm impedance and minimize skew.",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["differential", "impedance", "skew", "routing"]
-        },
-        {
-            "text": "You're seeing timing degradation after detailed routing compared to placement timing. What causes this and how would you recover the timing?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["timing", "degradation", "routing", "placement"]
-        },
-        {
-            "text": "Your router is struggling with congestion in certain regions leading to 5% routing non-completion. What techniques would you use to achieve 100% routing?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["congestion", "completion", "routing", "techniques"]
-        },
-        {
-            "text": "Describe your approach to power/ground routing for a 200A peak current design. How do you ensure adequate current carrying capacity and low IR drop?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["power", "ground", "current", "capacity", "IR", "drop"]
-        },
-        {
-            "text": "Your design has specific layer constraints (no routing on M1 except local connections, M2-M3 for signal, M4-M6 for power). How does this impact your routing strategy?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["layer", "constraints", "routing", "strategy", "metal"]
-        },
-        {
-            "text": "You have crosstalk violations on 50 critical nets causing functional failures. Explain your routing techniques to minimize crosstalk and meet noise requirements.",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["crosstalk", "violations", "noise", "routing", "techniques"]
-        },
-        {
-            "text": "Your clock distribution network requires <50ps skew across 10,000 flops. Describe clock routing methodology and skew optimization techniques.",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["clock", "skew", "distribution", "optimization", "methodology"]
-        },
-        {
-            "text": "During routing, some power nets are showing electromigration violations. How would you address current density issues through routing changes and via sizing?",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["electromigration", "current", "density", "via", "sizing"]
-        },
-        {
-            "text": "You need to route in a 7nm design with double patterning constraints. Explain the challenges and your approach to handle LELE (Litho-Etch-Litho-Etch) decomposition issues.",
-            "level": "experienced",
-            "points": 10,
-            "keywords": ["double", "patterning", "LELE", "decomposition", "7nm"]
-        }
+        "After global routing, you have 500 DRC violations (spacing, via, width). Describe your systematic approach to resolve these violations efficiently.",
+        "Your design has 10 differential pairs for high-speed signals. Explain your routing strategy to maintain 100-ohm impedance and minimize skew.",
+        "You're seeing timing degradation after detailed routing compared to placement timing. What causes this and how would you recover the timing?",
+        "Your router is struggling with congestion in certain regions leading to 5% routing non-completion. What techniques would you use to achieve 100% routing?",
+        "Describe your approach to power/ground routing for a 200A peak current design. How do you ensure adequate current carrying capacity and low IR drop?",
+        "Your design has specific layer constraints (no routing on M1 except local connections, M2-M3 for signal, M4-M6 for power). How does this impact your routing strategy?",
+        "You have crosstalk violations on 50 critical nets causing functional failures. Explain your routing techniques to minimize crosstalk and meet noise requirements.",
+        "Your clock distribution network requires <50ps skew across 10,000 flops. Describe clock routing methodology and skew optimization techniques.",
+        "During routing, some power nets are showing electromigration violations. How would you address current density issues through routing changes and via sizing?",
+        "You need to route in a 7nm design with double patterning constraints. Explain the challenges and your approach to handle LELE (Litho-Etch-Litho-Etch) decomposition issues."
     ]
 }
 
-def safe_get_questions(engineer_id, topic):
-    """Get questions for experienced engineers (3+ years) - no smart selection needed"""
-    try:
-        questions = QUESTIONS_DB.get(topic, [])
-        if not questions:
-            return []
-        
-        # Simply return first 3 questions for all engineers (3+ years experience)
-        # All questions are designed for experienced level (3+ years)
-        return questions[:3]
-    except Exception:
-        # Fallback to first 3 questions
-        return QUESTIONS_DB.get(topic, [])[:3]
+def hash_pass(pwd):
+    return hashlib.sha256(pwd.encode()).hexdigest()
 
-def safe_get_questions(engineer_id, topic):
-    """Safely get questions based on engineer experience"""
-    try:
-        engineer = users.get(engineer_id, {})
-        experience = engineer.get('experience_years', 3)
-        
-        questions = QUESTIONS_DB.get(topic, [])
-        if not questions:
-            return []
-        
-        # Simple experience-based selection
-        if experience <= 2:
-            # Junior engineers get easier questions
-            selected = [q for q in questions if q.get('level') in ['beginner', 'intermediate']]
-        elif experience <= 4:
-            # Mid-level gets mixed
-            selected = questions
-        else:
-            # Senior gets harder questions
-            selected = [q for q in questions if q.get('level') in ['intermediate', 'advanced']]
-        
-        return selected[:3] if selected else questions[:3]
-    except Exception:
-        # Fallback to first 3 questions
-        return QUESTIONS_DB.get(topic, [])[:3]
+def check_pass(hashed, pwd):
+    return hashed == hashlib.sha256(pwd.encode()).hexdigest()
 
-def safe_calculate_score(answer, question):
-    """Safe AI scoring calculation"""
-    try:
-        if not answer or not isinstance(answer, str):
-            return 0
-        
-        answer_lower = answer.lower()
-        keywords = question.get('keywords', [])
-        
-        score = 0
-        for keyword in keywords:
-            if str(keyword).lower() in answer_lower:
-                score += 1.5
-        
-        # Length bonus
-        word_count = len(answer.split())
-        if word_count > 30:
-            score += 1
-        if word_count > 60:
-            score += 1
-        
-        return min(round(score, 1), 10)
-    except Exception:
-        return 0
-
-def safe_create_assignment(engineer_id, topic):
-    """Safely create assignment"""
-    global assignment_counter
+def init_data():
+    global users
+    users['admin'] = {
+        'id': 'admin',
+        'username': 'admin',
+        'password': hash_pass('Vibhuaya@3006'),
+        'is_admin': True,
+        'exp': 5
+    }
     
-    try:
-        if engineer_id not in users or topic not in QUESTIONS_DB:
-            return None
-        
-        assignment_counter += 1
-        assignment_id = f"PD_{topic.upper()}_{engineer_id}_{assignment_counter}"
-        
-        questions = safe_get_questions(engineer_id, topic)
-        if not questions:
-            return None
-        
-        assignment = {
-            'id': assignment_id,
-            'engineer_id': engineer_id,
-            'topic': topic,
-            'questions': questions,
-            'answers': {},
-            'scores': {},
-            'status': 'pending',
-            'created_date': datetime.now().isoformat(),
-            'due_date': (datetime.now() + timedelta(days=3)).isoformat(),
-            'total_score': None,
-            'max_score': sum(q.get('points', 10) for q in questions),
-            'scored_by': None
-        }
-        
-        assignments[assignment_id] = assignment
-        return assignment
-    except Exception:
-        return None
-
-def safe_init_users():
-    """Safely initialize users"""
-    try:
-        # Admin user
-        admin_password = hash_password('Vibhuaya@3006')
-        if admin_password:
-            users['admin'] = {
-                'id': 'admin',
-                'username': 'admin',
-                'password': admin_password,
-                'is_admin': True,
-                'experience_years': 5
-            }
-        
-        # Engineer users - all have 3+ years experience as required
-        engineers_data = [
-            {'id': 'eng001', 'exp': 3},
-            {'id': 'eng002', 'exp': 4}, 
-            {'id': 'eng003', 'exp': 5},
-            {'id': 'eng004', 'exp': 3},
-            {'id': 'eng005', 'exp': 4}
-        ]
-        
-        eng_password = hash_password('password123')
-        if eng_password:
-            for eng in engineers_data:
-                users[eng['id']] = {
-                    'id': eng['id'],
-                    'username': eng['id'],
-                    'password': eng_password,
-                    'is_admin': False,
-                    'experience_years': eng['exp']
-                }
-    except Exception:
-        # Fallback minimal users
-        users['admin'] = {
-            'id': 'admin',
-            'username': 'admin', 
-            'password': 'hashed_admin_pass',
-            'is_admin': True,
-            'experience_years': 5
+    for i in range(1, 6):
+        uid = f'eng00{i}'
+        users[uid] = {
+            'id': uid,
+            'username': uid,
+            'password': hash_pass('password123'),
+            'is_admin': False,
+            'exp': 3 + (i % 3)
         }
 
-# Safe HTML generation functions
-def generate_login_html(error=None):
-    """Generate safe login HTML"""
-    error_html = ''
-    if error:
-        error_html = f'<div class="error">❌ {str(error)}</div>'
+def create_test(eng_id, topic):
+    global counter
+    counter += 1
+    test_id = f"PD_{topic}_{eng_id}_{counter}"
     
-    return f'''<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PD Assessment System</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }}
-        .container {{
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 40px;
-            width: 400px;
-            max-width: 90%;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-        }}
-        h1 {{
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-size: 28px;
-            font-weight: 700;
-            text-align: center;
-            margin-bottom: 30px;
-        }}
-        .form-group {{ margin-bottom: 20px; }}
-        label {{
-            display: block;
-            color: #374151;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }}
-        input {{
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e5e7eb;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: all 0.3s ease;
-        }}
-        input:focus {{
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }}
-        .btn {{
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }}
-        .btn:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }}
-        .info {{
-            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-            border: 1px solid #0ea5e9;
-            border-radius: 12px;
-            padding: 16px;
-            margin: 20px 0;
-            text-align: center;
-        }}
-        .info h4 {{ color: #0c4a6e; margin-bottom: 10px; }}
-        .info p {{ color: #0369a1; font-size: 14px; margin: 5px 0; }}
-        .error {{
-            background: #fee2e2;
-            border: 1px solid #f87171;
-            color: #dc2626;
-            padding: 12px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-        }}
-        .features {{
-            text-align: center;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-        }}
-        .tag {{
-            display: inline-block;
-            background: rgba(102, 126, 234, 0.1);
-            color: #667eea;
-            padding: 4px 10px;
-            border-radius: 15px;
-            font-size: 11px;
-            margin: 2px;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>⚡ PD Assessment</h1>
-        {error_html}
-        <form method="POST">
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" name="username" required autocomplete="username">
-            </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" name="password" required autocomplete="current-password">
-            </div>
-            <button type="submit" class="btn">Sign In</button>
-        </form>
-        <div class="info">
-            <h4>🔑 Test Credentials</h4>
-            <p><strong>Engineers:</strong> eng001, eng002, eng003, eng004, eng005</p>
-            <p><strong>Password:</strong> password123</p>
-        </div>
-        <div class="features">
-            <span class="tag">🤖 Smart Scoring</span>
-            <span class="tag">📊 Analytics</span>
-            <span class="tag">🎯 Adaptive</span>
-            <span class="tag">💡 Enhanced</span>
-        </div>
-    </div>
-</body>
-</html>'''
+    test = {
+        'id': test_id,
+        'engineer_id': eng_id,
+        'topic': topic,
+        'questions': QUESTIONS[topic][:3],
+        'answers': {},
+        'status': 'pending',
+        'created': datetime.now().isoformat(),
+        'due': (datetime.now() + timedelta(days=3)).isoformat(),
+        'score': None
+    }
+    
+    assignments[test_id] = test
+    return test
 
-# Routes with comprehensive error handling
 @app.route('/')
 def home():
-    try:
-        if 'user_id' in session:
-            if session.get('is_admin'):
-                return redirect('/admin')
-            else:
-                return redirect('/student')
-        return redirect('/login')
-    except Exception:
-        return redirect('/login')
+    if 'user_id' in session:
+        if session.get('is_admin'):
+            return redirect('/admin')
+        return redirect('/student')
+    return redirect('/login')
 
 @app.route('/health')
 def health():
-    try:
-        return 'OK', 200
-    except Exception:
-        return 'ERROR', 500
+    return 'OK'
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    try:
-        error = None
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
         
-        if request.method == 'POST':
-            username = request.form.get('username', '').strip()
-            password = request.form.get('password', '').strip()
+        user = users.get(username)
+        if user and check_pass(user['password'], password):
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            session['is_admin'] = user.get('is_admin', False)
             
-            if username and password:
-                user = users.get(username)
-                if user and check_password(user.get('password'), password):
-                    session['user_id'] = user['id']
-                    session['username'] = user['username']
-                    session['is_admin'] = user.get('is_admin', False)
-                    
-                    if user.get('is_admin'):
-                        return redirect('/admin')
-                    else:
-                        return redirect('/student')
-                else:
-                    error = 'Invalid credentials'
-            else:
-                error = 'Please enter both username and password'
-        
-        return generate_login_html(error)
-    except Exception as e:
-        return generate_login_html('System error occurred')
-
-@app.route('/logout')
-def logout():
-    try:
-        session.clear()
-        return redirect('/login')
-    except Exception:
-        return redirect('/login')
-
-@app.route('/admin')
-def admin_dashboard():
-    try:
-        if 'user_id' not in session or not session.get('is_admin'):
-            return redirect('/login')
-        
-        engineers = [u for u in users.values() if not u.get('is_admin')]
-        all_assignments = list(assignments.values())
-        submitted = [a for a in all_assignments if a.get('status') == 'submitted']
-        
-        # Generate engineer options
-        engineer_options = ''
-        for eng in engineers:
-            exp_years = eng.get('experience_years', 0)
-            if exp_years <= 2:
-                level = 'Junior'
-            elif exp_years <= 4:
-                level = 'Mid'
-            else:
-                level = 'Senior'
-                            engineer_options += f'<option value="{eng["id"]}">{eng["username"]} (Experienced - {exp_years}y)</option>'
-        
-        # Generate submitted assignments
-        submitted_html = ''
-        if submitted:
-            for a in submitted:
-                engineer = users.get(a['engineer_id'], {})
-                submitted_html += f'''
-                <div class="assignment-item">
-                    <strong>{a["topic"].title()} - {a["engineer_id"]}</strong><br>
-                    <small>Experience: {engineer.get("experience_years", 0)} years | Questions: {len(a.get("questions", []))} | Max: {a.get("max_score", 30)}</small><br>
-                    <a href="/admin/review/{a["id"]}" class="btn btn-success" style="margin-top: 8px;">Review & Score</a>
-                </div>'''
-        else:
-            submitted_html = '<div class="empty">📭 No pending reviews</div>'
-        
-        return f'''<!DOCTYPE html>
-<html lang="en">
+            if user.get('is_admin'):
+                return redirect('/admin')
+            return redirect('/student')
+    
+    return '''
+<!DOCTYPE html>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
+    <title>PD Assessment Login</title>
     <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8fafc;
-            color: #1e293b;
-        }}
-        .header {{
-            background: linear-gradient(135deg, #1e40af, #3b82f6);
-            color: white;
-            padding: 20px 0;
-        }}
-        .header-content {{
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-        }}
-        .container {{ max-width: 1200px; margin: 20px auto; padding: 0 20px; }}
-        .stats {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }}
-        .stat {{
-            background: white;
-            padding: 24px;
-            border-radius: 12px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            text-align: center;
-        }}
-        .stat-number {{ font-size: 28px; font-weight: 700; color: #1e40af; margin-bottom: 6px; }}
-        .stat-label {{ color: #64748b; font-size: 14px; }}
-        .card {{
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            margin-bottom: 24px;
-        }}
-        .card-header {{
-            background: #f8fafc;
-            padding: 20px 24px;
-            border-bottom: 1px solid #e2e8f0;
-            border-radius: 12px 12px 0 0;
-        }}
-        .card-body {{ padding: 24px; }}
-        .form-row {{ display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }}
-        .form-group {{ flex: 1; min-width: 150px; }}
-        label {{ display: block; margin-bottom: 6px; color: #374151; font-weight: 500; }}
-        select {{
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            background: white;
-        }}
-        .btn {{
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-weight: 500;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-        }}
-        .btn-primary {{ background: #3b82f6; color: white; }}
-        .btn-success {{ background: #10b981; color: white; }}
-        .assignment-item {{
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 12px;
-        }}
-        .logout-btn {{
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
-            text-decoration: none;
-        }}
-        .empty {{ text-align: center; padding: 40px; color: #64748b; }}
+        body { font-family: Arial; background: linear-gradient(135deg, #667eea, #764ba2); min-height: 100vh; display: flex; align-items: center; justify-content: center; margin: 0; }
+        .box { background: rgba(255,255,255,0.95); padding: 40px; border-radius: 20px; width: 350px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        h1 { background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 30px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; }
+        input:focus { outline: none; border-color: #667eea; }
+        button { width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+        .info { background: #f0f9ff; border: 1px solid #0ea5e9; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="header-content">
-            <h1>⚡ Admin Dashboard</h1>
-            <div>
-                <span>👨‍💼 {session['username']}</span>
-                <a href="/logout" class="logout-btn">Logout</a>
-            </div>
-        </div>
-    </div>
-    
-    <div class="container">
-        <div class="stats">
-            <div class="stat">
-                <div class="stat-number">{len(engineers)}</div>
-                <div class="stat-label">Engineers</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">{len(all_assignments)}</div>
-                <div class="stat-label">Assignments</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">{len(submitted)}</div>
-                <div class="stat-label">Pending</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">9</div>
-                <div class="stat-label">Smart Questions</div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h2>🎯 Create Assessment (3+ Years Experience)</h2>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="/admin/create">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Engineer</label>
-                            <select name="engineer_id" required>
-                                <option value="">Select...</option>
-                                {engineer_options}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Topic</label>
-                            <select name="topic" required>
-                                <option value="">Select...</option>
-                                <option value="floorplanning">🏗️ Floorplanning</option>
-                                <option value="placement">📍 Placement</option>
-                                <option value="routing">🛤️ Routing</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <button type="submit" class="btn btn-primary">Create</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h2>📋 Submitted Assessments</h2>
-            </div>
-            <div class="card-body">
-                {submitted_html}
-            </div>
+    <div class="box">
+        <h1>PD Assessment</h1>
+        <form method="POST">
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+        <div class="info">
+            <strong>Test Login:</strong><br>
+            Engineers: eng001, eng002, eng003, eng004, eng005<br>
+            Password: password123
         </div>
     </div>
 </body>
 </html>'''
-    except Exception:
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/login')
+
+@app.route('/admin')
+def admin():
+    if not session.get('is_admin'):
         return redirect('/login')
-
-@app.route('/admin/create', methods=['POST'])
-def admin_create():
-    try:
-        if 'user_id' not in session or not session.get('is_admin'):
-            return redirect('/login')
-        
-        engineer_id = request.form.get('engineer_id', '').strip()
-        topic = request.form.get('topic', '').strip()
-        
-        if engineer_id and topic:
-            safe_create_assignment(engineer_id, topic)
-        
-        return redirect('/admin')
-    except Exception:
-        return redirect('/admin')
-
-@app.route('/admin/review/<assignment_id>', methods=['GET', 'POST'])
-def admin_review(assignment_id):
-    try:
-        if 'user_id' not in session or not session.get('is_admin'):
-            return redirect('/login')
-        
-        assignment = assignments.get(assignment_id)
-        if not assignment:
-            return redirect('/admin')
-        
-        if request.method == 'POST':
-            total_score = 0
-            questions = assignment.get('questions', [])
-            
-            for i in range(len(questions)):
-                score_str = request.form.get(f'score_{i}', '0')
-                try:
-                    score = float(score_str)
-                    total_score += score
-                except (ValueError, TypeError):
-                    total_score += 0
-            
-            assignment['total_score'] = round(total_score, 1)
-            assignment['status'] = 'published'
-            assignment['scored_by'] = session.get('username', 'admin')
-            assignment['scored_date'] = datetime.now().isoformat()
-            
-            return redirect('/admin')
-        
-        # Generate review page
-        questions = assignment.get('questions', [])
-        questions_html = ''
-        
-        for i, question in enumerate(questions):
-            answer = assignment.get('answers', {}).get(str(i), 'No answer provided')
-            auto_score = safe_calculate_score(answer, question)
-            
-            questions_html += f'''
-            <div class="card">
-                <div class="card-header">
-                    <h4>Question {i+1} of {len(questions)}</h4>
-                    <small>Level: {question.get("level", "intermediate").title()} | Points: {question.get("points", 10)}</small>
-                </div>
-                <div class="card-body">
-                    <div class="question">
-                        <strong>Q:</strong> {question.get("text", "Question not available")}
-                    </div>
-                    <h5>📝 Answer:</h5>
-                    <div class="answer">{answer}</div>
-                    <div class="ai-info">
-                        <strong>🤖 AI Score:</strong> {auto_score}/10
-                    </div>
-                    <div class="scoring">
-                        <label><strong>👨‍🏫 Your Score:</strong></label>
-                        <input type="number" name="score_{i}" min="0" max="{question.get("points", 10)}" 
-                               value="{auto_score}" class="score-input" required step="0.5">
-                        <span>/ {question.get("points", 10)}</span>
-                    </div>
-                </div>
-            </div>'''
-        
-        return f'''<!DOCTYPE html>
-<html lang="en">
+    
+    engineers = [u for u in users.values() if not u.get('is_admin')]
+    all_tests = list(assignments.values())
+    pending = [a for a in all_tests if a['status'] == 'submitted']
+    
+    eng_options = ''
+    for eng in engineers:
+        eng_options += f'<option value="{eng["id"]}">{eng["username"]} ({eng["exp"]}y)</option>'
+    
+    pending_html = ''
+    for p in pending:
+        pending_html += f'''
+        <div style="background: #f8fafc; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <strong>{p["topic"].title()} - {p["engineer_id"]}</strong><br>
+            <small>3 Questions | Max: 30 points</small><br>
+            <a href="/admin/review/{p["id"]}" style="background: #10b981; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block; margin-top: 8px;">Review</a>
+        </div>'''
+    
+    if not pending_html:
+        pending_html = '<p style="text-align: center; color: #64748b; padding: 40px;">No pending reviews</p>'
+    
+    return f'''
+<!DOCTYPE html>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Review Assessment</title>
+    <title>Admin Dashboard</title>
     <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8fafc;
-            color: #1e293b;
-        }}
+        body {{ font-family: Arial; margin: 0; background: #f8fafc; }}
         .header {{ background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 20px 0; }}
         .container {{ max-width: 1000px; margin: 20px auto; padding: 0 20px; }}
-        .card {{
-            background: white;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            overflow: hidden;
-        }}
-        .card-header {{
-            background: #f8fafc;
-            padding: 16px 20px;
-            border-bottom: 1px solid #e2e8f0;
-        }}
-        .card-body {{ padding: 20px; }}
-        .question {{
-            background: #f1f5f9;
-            padding: 16px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            border-left: 4px solid #3b82f6;
-        }}
-        .answer {{
-            background: #fefefe;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 16px;
-            font-family: monospace;
-            font-size: 14px;
-            white-space: pre-wrap;
-        }}
-        .scoring {{
-            background: #f8fafc;
-            padding: 16px;
-            border-radius: 8px;
-        }}
-        .score-input {{
-            width: 60px;
-            padding: 8px;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            text-align: center;
-            font-weight: 600;
-        }}
-        .btn {{
-            padding: 12px 24px;
-            border: none;
-            border-radius: 6px;
-            font-weight: 500;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            margin: 5px;
-        }}
-        .btn-primary {{ background: #3b82f6; color: white; }}
-        .btn-secondary {{ background: #6b7280; color: white; }}
-        .submit-section {{
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }}
-        .ai-info {{
-            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-            border: 1px solid #0ea5e9;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
-            font-size: 14px;
-        }}
+        .stats {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }}
+        .stat {{ background: white; padding: 20px; border-radius: 8px; text-align: center; }}
+        .stat-num {{ font-size: 24px; font-weight: bold; color: #1e40af; }}
+        .card {{ background: white; border-radius: 8px; padding: 20px; margin: 20px 0; }}
+        select, button {{ padding: 10px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; }}
+        button {{ background: #3b82f6; color: white; border: none; cursor: pointer; }}
+        .logout {{ background: rgba(255,255,255,0.2); color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; float: right; }}
     </style>
 </head>
 <body>
     <div class="header">
         <div style="max-width: 1000px; margin: 0 auto; padding: 0 20px;">
-            <h1>📝 Review Assessment: {assignment_id}</h1>
-            <p>{assignment['topic'].title()} - {assignment['engineer_id']}</p>
-        </div>
-    </div>
-    
-    <div class="container">
-        <form method="POST">
-            {questions_html}
-            <div class="submit-section">
-                <button type="submit" class="btn btn-primary">✅ Publish Final Scores</button>
-                <a href="/admin" class="btn btn-secondary">← Back to Dashboard</a>
-            </div>
-        </form>
-    </div>
-</body>
-</html>'''
-    except Exception:
-        return redirect('/admin')
-
-@app.route('/student')
-def student_dashboard():
-    try:
-        if 'user_id' not in session:
-            return redirect('/login')
-        
-        user_id = session['user_id']
-        user = users.get(user_id, {})
-        my_assignments = [a for a in assignments.values() if a.get('engineer_id') == user_id]
-        
-        # Generate assignment cards
-        assignments_html = ''
-        if my_assignments:
-            for a in my_assignments:
-                status = a.get('status', 'pending')
-                topic = a.get('topic', 'unknown')
-                
-                # Topic icon
-                topic_icons = {'floorplanning': '🏗️', 'placement': '📍', 'routing': '🛤️'}
-                topic_icon = topic_icons.get(topic, '📝')
-                
-                # Status content
-                status_content = ''
-                if status == 'published':
-                    total_score = a.get('total_score', 0)
-                    max_score = a.get('max_score', 30)
-                    percentage = (total_score / max_score * 100) if max_score > 0 else 0
-                    status_content = f'''
-                    <div class="score-display">
-                        <strong>Score: {total_score}/{max_score} ({percentage:.1f}%)</strong>
-                    </div>'''
-                elif status == 'submitted':
-                    status_content = '<p style="text-align: center; color: #3b82f6; font-weight: 500;">⏳ Under AI analysis and admin review</p>'
-                elif status == 'pending':
-                    status_content = f'''
-                    <a href="/student/assignment/{a['id']}" class="btn btn-primary" style="width: 100%; margin-top: 8px;">
-                        🚀 Start Smart Assessment
-                    </a>'''
-                
-                assignments_html += f'''
-                <div class="assignment">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <div class="assignment-title">
-                            {topic_icon} {topic.title()} Assessment
-                        </div>
-                        <span class="status status-{status}">{status}</span>
-                    </div>
-                    <div class="assignment-meta">
-                        <div class="meta-item">
-                            <div class="meta-value">{len(a.get('questions', []))}</div>
-                            <div class="meta-label">Questions</div>
-                        </div>
-                        <div class="meta-item">
-                            <div class="meta-value">{a.get("max_score", 30)}</div>
-                            <div class="meta-label">Max Score</div>
-                        </div>
-                        <div class="meta-item">
-                            <div class="meta-value">{a.get("due_date", "")[:10]}</div>
-                            <div class="meta-label">Due Date</div>
-                        </div>
-                    </div>
-                    {status_content}
-                </div>'''
-        else:
-            assignments_html = '''
-            <div class="empty">
-                <h3>📭 No Assessments Yet</h3>
-                <p>Your smart assessments will appear here when created by admin.</p>
-            </div>'''
-        
-        completed_count = len([a for a in my_assignments if a.get('status') == 'published'])
-        
-        return f'''<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Engineer Dashboard</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #1e293b;
-        }}
-        .header {{
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            padding: 20px 0;
-        }}
-        .header-content {{
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-        }}
-        .header h1 {{
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-size: 24px;
-            font-weight: 700;
-        }}
-        .container {{ max-width: 1200px; margin: 20px auto; padding: 0 20px; }}
-        .stats {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }}
-        .stat {{
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }}
-        .stat-number {{ font-size: 24px; font-weight: 700; color: #1e293b; margin-bottom: 6px; }}
-        .stat-label {{ color: #64748b; font-size: 12px; text-transform: uppercase; }}
-        .section {{
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-        }}
-        .assignment {{
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 16px;
-            transition: all 0.3s ease;
-        }}
-        .assignment:hover {{ border-color: #667eea; transform: translateY(-2px); }}
-        .assignment-title {{ font-size: 18px; font-weight: 600; color: #1e293b; }}
-        .assignment-meta {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 10px;
-            margin: 12px 0;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 8px;
-            font-size: 13px;
-        }}
-        .meta-item {{ text-align: center; }}
-        .meta-value {{ font-weight: 600; color: #1e293b; }}
-        .meta-label {{ color: #64748b; font-size: 11px; text-transform: uppercase; }}
-        .status {{
-            padding: 6px 12px;
-            border-radius: 15px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }}
-        .status-pending {{ background: #fbbf24; color: white; }}
-        .status-submitted {{ background: #3b82f6; color: white; }}
-        .status-published {{ background: #10b981; color: white; }}
-        .btn {{
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            text-align: center;
-            transition: all 0.3s ease;
-        }}
-        .btn-primary {{
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-        }}
-        .btn-primary:hover {{ transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }}
-        .logout-btn {{
-            background: rgba(239, 68, 68, 0.1);
-            color: #dc2626;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
-            text-decoration: none;
-        }}
-        .score-display {{
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            margin-top: 8px;
-        }}
-        .empty {{ text-align: center; padding: 40px; color: #64748b; }}
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="header-content">
-            <h1>⚡ Engineer Dashboard</h1>
-            <div>
-                <span>👨‍💼 {session['username']} ({user.get('experience_years', 0)} years)</span>
-                <a href="/logout" class="logout-btn">Logout</a>
-            </div>
+            <h1>Admin Dashboard
+                <a href="/logout" class="logout">Logout</a>
+            </h1>
         </div>
     </div>
     
     <div class="container">
         <div class="stats">
-            <div class="stat">
-                <div class="stat-number">{len(my_assignments)}</div>
-                <div class="stat-label">Assessments</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">{completed_count}</div>
-                <div class="stat-label">Completed</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">{user.get('experience_years', 0)}y</div>
-                <div class="stat-label">Experience</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">🤖</div>
-                <div class="stat-label">AI Enhanced</div>
-            </div>
+            <div class="stat"><div class="stat-num">{len(engineers)}</div><div>Engineers</div></div>
+            <div class="stat"><div class="stat-num">{len(all_tests)}</div><div>Tests</div></div>
+            <div class="stat"><div class="stat-num">{len(pending)}</div><div>Pending</div></div>
+            <div class="stat"><div class="stat-num">30</div><div>Questions</div></div>
         </div>
         
-        <div class="section">
-            <h2 style="margin-bottom: 20px;">📚 My Smart Assessments</h2>
-            {assignments_html}
+        <div class="card">
+            <h2>Create Test</h2>
+            <form method="POST" action="/admin/create">
+                <select name="engineer_id" required>
+                    <option value="">Select Engineer...</option>
+                    {eng_options}
+                </select>
+                <select name="topic" required>
+                    <option value="">Select Topic...</option>
+                    <option value="floorplanning">Floorplanning</option>
+                    <option value="placement">Placement</option>
+                    <option value="routing">Routing</option>
+                </select>
+                <button type="submit">Create</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>Pending Reviews</h2>
+            {pending_html}
         </div>
     </div>
 </body>
 </html>'''
-    except Exception:
-        return redirect('/login')
 
-@app.route('/student/assignment/<assignment_id>', methods=['GET', 'POST'])
-def student_assignment(assignment_id):
-    try:
-        if 'user_id' not in session:
-            return redirect('/login')
+@app.route('/admin/create', methods=['POST'])
+def admin_create():
+    if not session.get('is_admin'):
+        return redirect('/login')
+    
+    eng_id = request.form.get('engineer_id')
+    topic = request.form.get('topic')
+    
+    if eng_id and topic and topic in QUESTIONS:
+        create_test(eng_id, topic)
+    
+    return redirect('/admin')
+
+@app.route('/admin/review/<test_id>', methods=['GET', 'POST'])
+def admin_review(test_id):
+    if not session.get('is_admin'):
+        return redirect('/login')
+    
+    test = assignments.get(test_id)
+    if not test:
+        return redirect('/admin')
+    
+    if request.method == 'POST':
+        total = 0
+        for i in range(3):
+            try:
+                score = float(request.form.get(f'score_{i}', 0))
+                total += score
+            except:
+                pass
         
-        assignment = assignments.get(assignment_id)
-        if not assignment or assignment.get('engineer_id') != session['user_id']:
-            return redirect('/student')
-        
-        if request.method == 'POST' and assignment.get('status') == 'pending':
-            answers = {}
-            questions = assignment.get('questions', [])
-            
-            for i in range(len(questions)):
-                answer = request.form.get(f'answer_{i}', '').strip()
-                if answer:
-                    answers[str(i)] = answer
-            
-            if len(answers) == len(questions):
-                assignment['answers'] = answers
-                assignment['status'] = 'submitted'
-                assignment['submitted_date'] = datetime.now().isoformat()
-            
-            return redirect('/student')
-        
-        questions = assignment.get('questions', [])
-        topic = assignment.get('topic', 'unknown')
-        topic_icons = {'floorplanning': '🏗️', 'placement': '📍', 'routing': '🛤️'}
-        topic_icon = topic_icons.get(topic, '📝')
-        
-        # Generate question cards
-        questions_html = ''
-        for i, question in enumerate(questions):
-            level = question.get('level', 'intermediate')
-            points = question.get('points', 10)
-            text = question.get('text', 'Question not available')
-            
-            questions_html += f'''
-            <div class="question-card">
-                <div class="question-header">
-                    <div class="question-number">Question {i+1} of {len(questions)}</div>
-                    <div class="question-meta">
-                        <span class="meta-badge">⚡ {level.title()}</span>
-                        <span class="meta-badge">🎯 {points} pts</span>
-                    </div>
-                </div>
-                <div class="question-text">{text}</div>
-                <div>
-                    <label class="answer-label">✍️ Your Answer:</label>
-                    <textarea name="answer_{i}" class="answer-textarea" 
-                              placeholder="Provide a detailed technical answer with examples and methodologies..." 
-                              required></textarea>
-                </div>
-            </div>'''
-        
-        return f'''<!DOCTYPE html>
-<html lang="en">
+        test['score'] = total
+        test['status'] = 'completed'
+        return redirect('/admin')
+    
+    questions_html = ''
+    for i, q in enumerate(test['questions']):
+        answer = test.get('answers', {}).get(str(i), 'No answer')
+        questions_html += f'''
+        <div style="background: white; border-radius: 8px; padding: 20px; margin: 15px 0;">
+            <h4>Question {i+1}</h4>
+            <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 10px 0;">
+                {q}
+            </div>
+            <h5>Answer:</h5>
+            <div style="background: #fefefe; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; font-family: monospace; white-space: pre-wrap;">
+                {answer}
+            </div>
+            <div style="margin: 15px 0;">
+                <label><strong>Score:</strong></label>
+                <input type="number" name="score_{i}" min="0" max="10" value="7" style="width: 60px; padding: 5px;">
+                <span>/10</span>
+            </div>
+        </div>'''
+    
+    return f'''
+<!DOCTYPE html>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{topic.title()} Assessment</title>
+    <title>Review Test</title>
     <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #1e293b;
-        }}
-        .header {{
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            padding: 20px 0;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }}
-        .header-content {{
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 0 20px;
-            text-align: center;
-        }}
-        .title {{
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }}
+        body {{ font-family: Arial; background: #f8fafc; margin: 0; }}
+        .header {{ background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 20px 0; }}
         .container {{ max-width: 1000px; margin: 20px auto; padding: 0 20px; }}
-        .question-card {{
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-        }}
-        .question-header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid #f1f5f9;
-        }}
-        .question-number {{
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: 600;
-        }}
-        .question-meta {{ display: flex; gap: 10px; font-size: 12px; }}
-        .meta-badge {{
-            background: rgba(102, 126, 234, 0.1);
-            color: #4f46e5;
-            padding: 4px 8px;
-            border-radius: 10px;
-            font-weight: 500;
-        }}
-        .question-text {{
-            font-size: 16px;
-            line-height: 1.6;
-            color: #1e293b;
-            margin-bottom: 20px;
-            padding: 16px;
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            border-radius: 12px;
-            border-left: 4px solid #667eea;
-        }}
-        .answer-label {{ font-weight: 600; color: #374151; margin-bottom: 8px; }}
-        .answer-textarea {{
-            width: 100%;
-            min-height: 120px;
-            padding: 16px;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            font-size: 14px;
-            line-height: 1.5;
-            background: #fefefe;
-            transition: all 0.3s ease;
-            resize: vertical;
-        }}
-        .answer-textarea:focus {{
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }}
-        .submit-section {{
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-            margin-top: 20px;
-        }}
-        .warning {{
-            background: linear-gradient(135deg, #fef3c7, #fde68a);
-            border: 1px solid #f59e0b;
-            color: #92400e;
-            padding: 16px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            font-weight: 500;
-        }}
-        .btn {{
-            padding: 14px 28px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            margin: 0 8px;
-            transition: all 0.3s ease;
-        }}
-        .btn-primary {{
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-        }}
-        .btn-primary:hover {{ transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3); }}
-        .btn-secondary {{
-            background: rgba(107, 114, 128, 0.1);
-            color: #374151;
-            border: 1px solid #d1d5db;
-        }}
+        button {{ background: #3b82f6; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; margin: 10px 5px; }}
+        .btn-sec {{ background: #6b7280; }}
+        input {{ padding: 5px; border: 1px solid #ddd; border-radius: 4px; }}
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="header-content">
-            <div class="title">{topic_icon} {topic.title()} Assessment</div>
-            <p style="color: #64748b;">📊 {len(questions)} Smart Questions | 🎯 Max: {assignment.get('max_score', 30)} Points</p>
+        <div style="max-width: 1000px; margin: 0 auto; padding: 0 20px;">
+            <h1>Review: {test_id}</h1>
         </div>
     </div>
     
     <div class="container">
         <form method="POST">
             {questions_html}
-            <div class="submit-section">
-                <div class="warning">
-                    ⚠️ Review all answers before submitting. You cannot edit after submission.
-                </div>
-                <button type="submit" class="btn btn-primary">🚀 Submit Assessment</button>
-                <a href="/student" class="btn btn-secondary">← Back to Dashboard</a>
+            <div style="text-align: center; padding: 20px;">
+                <button type="submit">Publish Scores</button>
+                <a href="/admin"><button type="button" class="btn-sec">Back</button></a>
             </div>
         </form>
     </div>
 </body>
 </html>'''
-    except Exception:
+
+@app.route('/student')
+def student():
+    if not session.get('user_id') or session.get('is_admin'):
+        return redirect('/login')
+    
+    user_id = session['user_id']
+    user = users.get(user_id, {})
+    my_tests = [a for a in assignments.values() if a['engineer_id'] == user_id]
+    
+    tests_html = ''
+    for t in my_tests:
+        status = t['status']
+        if status == 'completed':
+            tests_html += f'''
+            <div style="background: white; border-radius: 12px; padding: 20px; margin: 15px 0;">
+                <h3>{t["topic"].title()} Test</h3>
+                <div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 12px; border-radius: 8px; text-align: center;">
+                    <strong>Score: {t["score"]}/30</strong>
+                </div>
+            </div>'''
+        elif status == 'submitted':
+            tests_html += f'''
+            <div style="background: white; border-radius: 12px; padding: 20px; margin: 15px 0;">
+                <h3>{t["topic"].title()} Test</h3>
+                <p style="color: #3b82f6; text-align: center;">Under Review</p>
+            </div>'''
+        else:
+            tests_html += f'''
+            <div style="background: white; border-radius: 12px; padding: 20px; margin: 15px 0;">
+                <h3>{t["topic"].title()} Test</h3>
+                <a href="/student/test/{t["id"]}" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: block; text-align: center;">
+                    Start Test
+                </a>
+            </div>'''
+    
+    if not tests_html:
+        tests_html = '<div style="text-align: center; padding: 40px; color: #64748b;"><h3>No tests assigned</h3></div>'
+    
+    return f'''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Dashboard</title>
+    <style>
+        body {{ font-family: Arial; margin: 0; background: linear-gradient(135deg, #667eea, #764ba2); min-height: 100vh; }}
+        .header {{ background: rgba(255,255,255,0.95); padding: 20px 0; }}
+        .container {{ max-width: 1000px; margin: 20px auto; padding: 0 20px; }}
+        .stats {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }}
+        .stat {{ background: rgba(255,255,255,0.95); padding: 20px; border-radius: 16px; text-align: center; }}
+        .section {{ background: rgba(255,255,255,0.95); border-radius: 16px; padding: 24px; }}
+        .logout {{ background: rgba(239,68,68,0.1); color: #dc2626; padding: 8px 16px; text-decoration: none; border-radius: 6px; float: right; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="max-width: 1000px; margin: 0 auto; padding: 0 20px;">
+            <h1 style="background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                Engineer Dashboard
+                <a href="/logout" class="logout">Logout</a>
+            </h1>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="stats">
+            <div class="stat"><div style="font-size: 20px; font-weight: bold;">{len(my_tests)}</div><div>Tests</div></div>
+            <div class="stat"><div style="font-size: 20px; font-weight: bold;">{len([t for t in my_tests if t['status'] == 'completed'])}</div><div>Done</div></div>
+            <div class="stat"><div style="font-size: 20px; font-weight: bold;">{user.get('exp', 0)}y</div><div>Experience</div></div>
+            <div class="stat"><div style="font-size: 20px; font-weight: bold;">3</div><div>Questions</div></div>
+        </div>
+        
+        <div class="section">
+            <h2>My Tests</h2>
+            {tests_html}
+        </div>
+    </div>
+</body>
+</html>'''
+
+@app.route('/student/test/<test_id>', methods=['GET', 'POST'])
+def student_test(test_id):
+    if not session.get('user_id') or session.get('is_admin'):
+        return redirect('/login')
+    
+    test = assignments.get(test_id)
+    if not test or test['engineer_id'] != session['user_id']:
         return redirect('/student')
+    
+    if request.method == 'POST' and test['status'] == 'pending':
+        answers = {}
+        for i in range(3):
+            answer = request.form.get(f'answer_{i}', '').strip()
+            if answer:
+                answers[str(i)] = answer
+        
+        if len(answers) == 3:
+            test['answers'] = answers
+            test['status'] = 'submitted'
+        
+        return redirect('/student')
+    
+    questions_html = ''
+    for i, q in enumerate(test['questions']):
+        questions_html += f'''
+        <div style="background: rgba(255,255,255,0.95); border-radius: 16px; padding: 24px; margin: 20px 0;">
+            <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 8px 16px; border-radius: 20px; display: inline-block; margin-bottom: 16px;">
+                Question {i+1} of 3
+            </div>
+            <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #667eea;">
+                {q}
+            </div>
+            <label style="font-weight: 600; margin-bottom: 8px; display: block;">Your Answer:</label>
+            <textarea name="answer_{i}" style="width: 100%; min-height: 120px; padding: 16px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 14px;" placeholder="Provide detailed technical answer..." required></textarea>
+        </div>'''
+    
+    return f'''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{test["topic"].title()} Test</title>
+    <style>
+        body {{ font-family: Arial; margin: 0; background: linear-gradient(135deg, #667eea, #764ba2); min-height: 100vh; }}
+        .header {{ background: rgba(255,255,255,0.95); padding: 20px 0; position: sticky; top: 0; }}
+        .container {{ max-width: 1000px; margin: 20px auto; padding: 0 20px; }}
+        button {{ padding: 14px 28px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; margin: 8px; }}
+        .btn-primary {{ background: linear-gradient(135deg, #667eea, #764ba2); color: white; }}
+        .btn-secondary {{ background: rgba(107,114,128,0.1); color: #374151; }}
+        textarea:focus {{ outline: none; border-color: #667eea; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="max-width: 1000px; margin: 0 auto; padding: 0 20px; text-align: center;">
+            <h1 style="background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                {test["topic"].title()} Test
+            </h1>
+        </div>
+    </div>
+    
+    <div class="container">
+        <form method="POST">
+            {questions_html}
+            <div style="background: rgba(255,255,255,0.95); border-radius: 16px; padding: 24px; text-align: center; margin-top: 20px;">
+                <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 16px; border-radius: 12px; margin-bottom: 20px; color: #92400e;">
+                    ⚠️ Review all answers before submitting. Cannot edit after submission.
+                </div>
+                <button type="submit" class="btn-primary">Submit Test</button>
+                <a href="/student"><button type="button" class="btn-secondary">Back</button></a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>'''
 
-# Initialize the system safely
-try:
-    safe_init_users()
-except Exception:
-    pass
+# Initialize
+init_data()
 
-# Main execution
 if __name__ == '__main__':
-    try:
-        port = int(os.environ.get('PORT', 5000))
-        app.run(host='0.0.0.0', port=port, debug=False)
-    except Exception as e:
-        print(f"Startup error: {e}")
-        exit(1)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
