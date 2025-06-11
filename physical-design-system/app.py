@@ -83,11 +83,14 @@ def create_test(eng_id, topic):
     counter += 1
     test_id = f"PD_{topic}_{eng_id}_{counter}"
     
+    # Get all 10 questions for the topic instead of just first 3
+    all_questions = QUESTIONS[topic]
+    
     test = {
         'id': test_id,
         'engineer_id': eng_id,
         'topic': topic,
-        'questions': QUESTIONS[topic][:3],
+        'questions': all_questions,  # All 10 questions
         'answers': {},
         'status': 'pending',
         'created': datetime.now().isoformat(),
@@ -181,7 +184,7 @@ def admin():
         pending_html += f'''
         <div style="background: #f8fafc; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #e2e8f0;">
             <strong>{p["topic"].title()} - {p["engineer_id"]}</strong><br>
-            <small>3 Questions | Max: 30 points</small><br>
+            <small>{len(p["questions"])} Questions | Max: {len(p["questions"]) * 10} points</small><br>
             <a href="/admin/review/{p["id"]}" style="background: #10b981; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block; margin-top: 8px;">Review</a>
         </div>'''
     
@@ -272,7 +275,8 @@ def admin_review(test_id):
     
     if request.method == 'POST':
         total = 0
-        for i in range(3):
+        num_questions = len(test['questions'])
+        for i in range(num_questions):
             try:
                 score = float(request.form.get(f'score_{i}', 0))
                 total += score
@@ -353,7 +357,7 @@ def student():
             <div style="background: white; border-radius: 12px; padding: 20px; margin: 15px 0;">
                 <h3>{t["topic"].title()} Test</h3>
                 <div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 12px; border-radius: 8px; text-align: center;">
-                    <strong>Score: {t["score"]}/30</strong>
+                    <strong>Score: {t["score"]}/{len(t["questions"]) * 10}</strong>
                 </div>
             </div>'''
         elif status == 'submitted':
@@ -404,7 +408,7 @@ def student():
             <div class="stat"><div style="font-size: 20px; font-weight: bold;">{len(my_tests)}</div><div>Tests</div></div>
             <div class="stat"><div style="font-size: 20px; font-weight: bold;">{len([t for t in my_tests if t['status'] == 'completed'])}</div><div>Done</div></div>
             <div class="stat"><div style="font-size: 20px; font-weight: bold;">{user.get('exp', 0)}y</div><div>Experience</div></div>
-            <div class="stat"><div style="font-size: 20px; font-weight: bold;">3</div><div>Questions</div></div>
+            <div class="stat"><div style="font-size: 20px; font-weight: bold;">10</div><div>Questions/Test</div></div>
         </div>
         
         <div class="section">
@@ -426,12 +430,13 @@ def student_test(test_id):
     
     if request.method == 'POST' and test['status'] == 'pending':
         answers = {}
-        for i in range(3):
+        num_questions = len(test['questions'])
+        for i in range(num_questions):
             answer = request.form.get(f'answer_{i}', '').strip()
             if answer:
                 answers[str(i)] = answer
         
-        if len(answers) == 3:
+        if len(answers) == num_questions:
             test['answers'] = answers
             test['status'] = 'submitted'
         
@@ -442,7 +447,7 @@ def student_test(test_id):
         questions_html += f'''
         <div style="background: rgba(255,255,255,0.95); border-radius: 16px; padding: 24px; margin: 20px 0;">
             <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 8px 16px; border-radius: 20px; display: inline-block; margin-bottom: 16px;">
-                Question {i+1} of 3
+                Question {i+1} of {len(test['questions'])}
             </div>
             <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #667eea;">
                 {q}
