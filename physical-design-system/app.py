@@ -11,10 +11,8 @@ app.secret_key = 'pd-secret-key'
 users = {}
 assignments = {}
 counter = 0
-# Track used questions per engineer per topic
-engineer_used_questions = {}
 
-# Questions - 10 per topic, 3+ experience level
+# Questions - 17 per topic, 3+ experience level (expanded pool for better uniqueness)
 QUESTIONS = {
     "floorplanning": [
         "You have a 5mm x 5mm die with 4 hard macros (each 1mm x 0.8mm) and need to achieve 70% utilization. Describe your macro placement strategy considering timing and power delivery.",
@@ -26,7 +24,14 @@ QUESTIONS = {
         "You're told to reduce die area by 15% while maintaining timing closure. What floorplan modifications would you make and what risks would you monitor?",
         "Your design has mixed-signal blocks requiring 60dB isolation from digital switching noise. How would you handle their placement and what guard techniques would you use?",
         "During early floorplan, how would you estimate routing congestion and what tools/techniques help predict routability issues before placement?",
-        "Your hierarchical design has 5 major blocks with complex timing constraints between them. Explain your approach to partition-level floorplanning and interface planning."
+        "Your hierarchical design has 5 major blocks with complex timing constraints between them. Explain your approach to partition-level floorplanning and interface planning.",
+        "You need to implement a temperature-aware floorplan for a high-power design (150W) with thermal hotspots. How would you distribute heat-generating blocks and plan thermal vias?",
+        "Your floorplan needs to support multiple test modes including scan, JTAG, and functional test. How would you plan test access and controllability in the floorplan?",
+        "You're working with a heterogeneous design mixing 7nm logic with 28nm analog blocks. How would you handle the floorplan challenges of different technology nodes?",
+        "Your design requires EMI/EMC compliance for automotive applications. What floorplan techniques would you use to minimize electromagnetic interference?",
+        "You need to optimize the floorplan for a battery-powered IoT device with strict power budgets. Describe your low-power floorplanning methodology.",
+        "Your floorplan must accommodate 8 different clock domains with specific isolation requirements. How would you partition and isolate these domains?",
+        "You're implementing a security-critical design requiring hardware isolation between secure and non-secure regions. How would you plan the secure floorplan architecture?"
     ],
     "placement": [
         "Your placement run shows timing violations on 20 critical paths with negative slack up to -50ps. Describe your systematic approach to fix these violations.",
@@ -38,7 +43,14 @@ QUESTIONS = {
         "Your timing report shows 150 hold violations scattered across the design. How would you address this through placement without affecting setup timing?",
         "During placement, you notice certain instances are creating routes longer than 500um. What tools and techniques help identify and fix such placement issues?",
         "Your design has 200+ clock gating cells. Explain their optimal placement strategy and impact on both power and timing closure.",
-        "You're working with a design that has both high-performance (1GHz) and low-power (100MHz) modes. How does this affect your placement strategy and optimization targets?"
+        "You're working with a design that has both high-performance (1GHz) and low-power (100MHz) modes. How does this affect your placement strategy and optimization targets?",
+        "Your placement flow needs to handle 50+ million instances with memory constraints. What techniques would you use for large-scale placement optimization?",
+        "You need to place analog-sensitive blocks that require specific orientation and spacing from digital switching. How would you handle mixed-signal placement constraints?",
+        "Your design has critical timing paths that span across multiple voltage domains. How would you optimize placement to minimize domain crossing delays?",
+        "You're implementing placement for a design with 20+ hierarchical blocks that need to be independently optimizable. Describe your hierarchical placement strategy.",
+        "Your placement must meet strict thermal constraints with maximum junction temperature of 85°C. How would you incorporate thermal-aware placement techniques?",
+        "You need to optimize placement for both area and wirelength while maintaining timing closure. Describe your multi-objective placement optimization approach.",
+        "Your design requires specific placement constraints for DFT structures including scan chains and BIST logic. How would you handle test-aware placement?"
     ],
     "routing": [
         "After global routing, you have 500 DRC violations (spacing, via, width). Describe your systematic approach to resolve these violations efficiently.",
@@ -50,7 +62,14 @@ QUESTIONS = {
         "You have crosstalk violations on 50 critical nets causing functional failures. Explain your routing techniques to minimize crosstalk and meet noise requirements.",
         "Your clock distribution network requires <50ps skew across 10,000 flops. Describe clock routing methodology and skew optimization techniques.",
         "During routing, some power nets are showing electromigration violations. How would you address current density issues through routing changes and via sizing?",
-        "You need to route in a 7nm design with double patterning constraints. Explain the challenges and your approach to handle LELE (Litho-Etch-Litho-Etch) decomposition issues."
+        "You need to route in a 7nm design with double patterning constraints. Explain the challenges and your approach to handle LELE (Litho-Etch-Litho-Etch) decomposition issues.",
+        "Your high-speed design requires length matching for 32-bit DDR5 interfaces running at 4800 MT/s. Describe your routing methodology for signal integrity.",
+        "You need to implement shield routing for sensitive analog signals in a mixed-signal design. How would you plan and execute the shielding strategy?",
+        "Your routing must handle 16 different supply voltages with strict isolation requirements. How would you manage multi-rail power routing?",
+        "You're routing a design with strict EMI requirements for aerospace applications. What routing techniques would you use to minimize electromagnetic emissions?",
+        "Your design has 100+ high-current power domains requiring dedicated power routing. Describe your strategy for hierarchical power grid routing.",
+        "You need to route through a design with 200+ IP blocks having different routing restrictions. How would you handle block-level routing constraints?",
+        "Your routing flow must handle both fine-pitch BGA and wire-bond packaging constraints. How would you optimize routing for different packaging technologies?"
     ]
 }
 
@@ -81,34 +100,21 @@ def init_data():
         }
 
 def create_test(eng_id, topic):
-    global counter, engineer_used_questions
+    global counter
     counter += 1
     test_id = f"PD_{topic}_{eng_id}_{counter}"
     
-    # Get all 10 questions for the topic
+    # Simple approach: use counter to select different questions
     all_questions = QUESTIONS[topic]
     
-    # Initialize tracking for this engineer+topic if not exists
-    key = f"{eng_id}_{topic}"
-    if key not in engineer_used_questions:
-        engineer_used_questions[key] = []
+    # Calculate starting position based on counter to ensure different questions
+    start_pos = (counter * 3) % len(all_questions)
     
-    # Find questions this engineer hasn't seen yet
-    used_indices = engineer_used_questions[key]
-    available_indices = [i for i in range(len(all_questions)) if i not in used_indices]
-    
-    # If engineer has seen all questions, reset their history for this topic
-    if len(available_indices) < 3:
-        engineer_used_questions[key] = []
-        available_indices = list(range(len(all_questions)))
-    
-    # Select 3 questions this engineer hasn't seen
-    import random
-    selected_indices = random.sample(available_indices, 3)
-    selected_questions = [all_questions[i] for i in selected_indices]
-    
-    # Mark these questions as used for this engineer
-    engineer_used_questions[key].extend(selected_indices)
+    # Select 3 questions starting from calculated position
+    selected_questions = []
+    for i in range(3):
+        idx = (start_pos + i) % len(all_questions)
+        selected_questions.append(all_questions[idx])
     
     test = {
         'id': test_id,
@@ -119,8 +125,7 @@ def create_test(eng_id, topic):
         'status': 'pending',
         'created': datetime.now().isoformat(),
         'due': (datetime.now() + timedelta(days=3)).isoformat(),
-        'score': None,
-        'question_indices': selected_indices  # Track which questions were used
+        'score': None
     }
     
     assignments[test_id] = test
@@ -209,7 +214,7 @@ def admin():
         pending_html += f'''
         <div style="background: #f8fafc; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #e2e8f0;">
             <strong>{p["topic"].title()} - {p["engineer_id"]}</strong><br>
-            <small>3 Unique Questions | Questions: {p.get("question_indices", [])}</small><br>
+            <small>3 Questions | Max: 30 points</small><br>
             <a href="/admin/review/{p["id"]}" style="background: #10b981; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block; margin-top: 8px;">Review</a>
         </div>'''
     
@@ -248,7 +253,7 @@ def admin():
             <div class="stat"><div class="stat-num">{len(engineers)}</div><div>Engineers</div></div>
             <div class="stat"><div class="stat-num">{len(all_tests)}</div><div>Tests</div></div>
             <div class="stat"><div class="stat-num">{len(pending)}</div><div>Pending</div></div>
-            <div class="stat"><div class="stat-num">30</div><div>Questions</div></div>
+            <div class="stat"><div class="stat-num">51</div><div>Questions</div></div>
         </div>
         
         <div class="card">
