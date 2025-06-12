@@ -1,54 +1,33 @@
-# app.py - Stable PD System with Unique Questions Only
+# app.py - Minimal Working DFT System
 import os
 import hashlib
 from datetime import datetime, timedelta
 from flask import Flask, request, redirect, session
 
 app = Flask(__name__)
-app.secret_key = 'pd-secret-key'
+app.secret_key = 'dft-secret-key'
 
 # Global data
 users = {}
 assignments = {}
 counter = 0
 
-# Questions - 10 per topic, 3+ experience level
+# Questions - 9 total questions, 3 per topic, unique for each engineer
 QUESTIONS = {
-    "floorplanning": [
-        "You have a 5mm x 5mm die with 4 hard macros (each 1mm x 0.8mm) and need to achieve 70% utilization. Describe your macro placement strategy considering timing and power delivery.",
-        "Your design has setup timing violations on paths crossing from left to right. The floorplan has macros placed randomly. How would you reorganize the floorplan to improve timing?",
-        "During floorplan, you notice routing congestion in the center region. What are 3 specific techniques you would use to reduce congestion without major timing impact?",
-        "Your design has 3 voltage domains (0.9V core, 1.2V IO, 0.7V retention). Explain how you would plan the floorplan to minimize level shifter count and power grid complexity.",
-        "You need to place 12 memory instances (8 SRAMs, 4 ROMs) in your design. What factors would you consider for their placement, and how would you verify floorplan quality?",
-        "Your floorplan review shows IR drop violations exceeding 50mV in certain regions. Describe your approach to fix this through floorplan changes and power grid improvements.",
-        "You're told to reduce die area by 15% while maintaining timing closure. What floorplan modifications would you make and what risks would you monitor?",
-        "Your design has mixed-signal blocks requiring 60dB isolation from digital switching noise. How would you handle their placement and what guard techniques would you use?",
-        "During early floorplan, how would you estimate routing congestion and what tools/techniques help predict routability issues before placement?",
-        "Your hierarchical design has 5 major blocks with complex timing constraints between them. Explain your approach to partition-level floorplanning and interface planning."
+    "scan_design": [
+        "You have a design with 50,000 flip-flops and need to achieve 99% fault coverage. Describe your scan chain insertion strategy, including scan chain length optimization and timing considerations.",
+        "Your scan insertion results show timing violations on scan paths with -200ps setup slack. What are the specific techniques you would use to fix scan timing without affecting functional timing?",
+        "During scan insertion, you encounter 500 non-scannable flops due to X-state issues and clock domain crossings. Describe your systematic approach to make these flops scannable."
     ],
-    "placement": [
-        "Your placement run shows timing violations on 20 critical paths with negative slack up to -50ps. Describe your systematic approach to fix these violations.",
-        "You're seeing routing congestion hotspots after placement in 2-3 regions. What placement adjustments would you make to improve routability?",
-        "Your design has high-fanout nets (>500 fanout) causing placement issues. How would you handle these nets during placement optimization?",
-        "Compare global placement vs detailed placement - what specific problems does each solve and when would you iterate between them?",
-        "Your placement shows leakage power 20% higher than target. What placement techniques would you use to reduce power while maintaining timing?",
-        "You have a multi-voltage design with 3 voltage islands. Describe your placement strategy for cells near domain boundaries and level shifter placement.",
-        "Your timing report shows 150 hold violations scattered across the design. How would you address this through placement without affecting setup timing?",
-        "During placement, you notice certain instances are creating routes longer than 500um. What tools and techniques help identify and fix such placement issues?",
-        "Your design has 200+ clock gating cells. Explain their optimal placement strategy and impact on both power and timing closure.",
-        "You're working with a design that has both high-performance (1GHz) and low-power (100MHz) modes. How does this affect your placement strategy and optimization targets?"
+    "bist_mbist": [
+        "Your design has 200 memory instances (SRAM, ROM, RF) and you need to implement MBIST. Describe your MBIST architecture, including controller placement and test algorithm selection.",
+        "During MBIST implementation, you're getting 85% memory coverage instead of target 95%. What factors affect MBIST coverage and how would you improve it?",
+        "Your MBIST patterns are detecting memory failures in 5% of dies. Explain your approach to analyze failure patterns and determine if they're systematic or random defects."
     ],
-    "routing": [
-        "After global routing, you have 500 DRC violations (spacing, via, width). Describe your systematic approach to resolve these violations efficiently.",
-        "Your design has 10 differential pairs for high-speed signals. Explain your routing strategy to maintain 100-ohm impedance and minimize skew.",
-        "You're seeing timing degradation after detailed routing compared to placement timing. What causes this and how would you recover the timing?",
-        "Your router is struggling with congestion in certain regions leading to 5% routing non-completion. What techniques would you use to achieve 100% routing?",
-        "Describe your approach to power/ground routing for a 200A peak current design. How do you ensure adequate current carrying capacity and low IR drop?",
-        "Your design has specific layer constraints (no routing on M1 except local connections, M2-M3 for signal, M4-M6 for power). How does this impact your routing strategy?",
-        "You have crosstalk violations on 50 critical nets causing functional failures. Explain your routing techniques to minimize crosstalk and meet noise requirements.",
-        "Your clock distribution network requires <50ps skew across 10,000 flops. Describe clock routing methodology and skew optimization techniques.",
-        "During routing, some power nets are showing electromigration violations. How would you address current density issues through routing changes and via sizing?",
-        "You need to route in a 7nm design with double patterning constraints. Explain the challenges and your approach to handle LELE (Litho-Etch-Litho-Etch) decomposition issues."
+    "boundary_scan": [
+        "Your PCB has 15 ICs with JTAG boundary scan capability. Design a JTAG chain topology considering signal integrity, debug access, and manufacturing test requirements.",
+        "During boundary scan implementation, you're achieving only 60% interconnect coverage on a complex PCB. What techniques would you use to improve coverage and test quality?",
+        "Your boundary scan testing reveals 20 interconnect failures between ICs. Describe your systematic approach to isolate opens, shorts, and bridging faults using boundary scan."
     ]
 }
 
@@ -68,7 +47,7 @@ def init_data():
         'exp': 5
     }
     
-    for i in range(1, 6):
+    for i in range(1, 4):
         uid = f'eng00{i}'
         users[uid] = {
             'id': uid,
@@ -81,25 +60,17 @@ def init_data():
 def create_test(eng_id, topic):
     global counter
     counter += 1
-    test_id = f"PD_{topic}_{eng_id}_{counter}"
+    test_id = f"DFT_{topic}_{eng_id}_{counter}"
     
-    # Simple unique selection - use counter to rotate through questions
-    all_questions = QUESTIONS[topic]
-    
-    # Simple rotation based on counter to ensure uniqueness
-    start_idx = (counter * 3) % len(all_questions)
-    selected_questions = []
-    
-    # Select 3 questions with simple rotation
-    for i in range(3):
-        idx = (start_idx + i) % len(all_questions)
-        selected_questions.append(all_questions[idx])
+    # Get engineer-specific question based on engineer ID
+    eng_num = int(eng_id[-1]) - 1  # eng001->0, eng002->1, eng003->2
+    question_index = eng_num % len(QUESTIONS[topic])
     
     test = {
         'id': test_id,
         'engineer_id': eng_id,
         'topic': topic,
-        'questions': selected_questions,
+        'questions': [QUESTIONS[topic][question_index]],  # Only one unique question per engineer
         'answers': {},
         'status': 'pending',
         'created': datetime.now().isoformat(),
@@ -142,7 +113,7 @@ def login():
 <!DOCTYPE html>
 <html>
 <head>
-    <title>PD Assessment Login</title>
+    <title>DFT Assessment Login</title>
     <style>
         body { font-family: Arial; background: linear-gradient(135deg, #667eea, #764ba2); min-height: 100vh; display: flex; align-items: center; justify-content: center; margin: 0; }
         .box { background: rgba(255,255,255,0.95); padding: 40px; border-radius: 20px; width: 350px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
@@ -155,7 +126,7 @@ def login():
 </head>
 <body>
     <div class="box">
-        <h1>PD Assessment</h1>
+        <h1>DFT Assessment</h1>
         <form method="POST">
             <input type="text" name="username" placeholder="Username" required>
             <input type="password" name="password" placeholder="Password" required>
@@ -163,7 +134,7 @@ def login():
         </form>
         <div class="info">
             <strong>Test Login:</strong><br>
-            Engineers: eng001, eng002, eng003, eng004, eng005<br>
+            Engineers: eng001, eng002, eng003<br>
             Password: password123
         </div>
     </div>
@@ -186,14 +157,14 @@ def admin():
     
     eng_options = ''
     for eng in engineers:
-        eng_options += f'<option value="{eng["id"]}">{eng["username"]} (3+ Experience)</option>'
+        eng_options += f'<option value="{eng["id"]}">{eng["username"]} ({eng["exp"]}y)</option>'
     
     pending_html = ''
     for p in pending:
         pending_html += f'''
         <div style="background: #f8fafc; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <strong>{p["topic"].title()} - {p["engineer_id"]}</strong><br>
-            <small>3 Questions | Max: 30 points</small><br>
+            <strong>{p["topic"].replace("_", " ").title()} - {p["engineer_id"]}</strong><br>
+            <small>1 Question | Max: 10 points</small><br>
             <a href="/admin/review/{p["id"]}" style="background: #10b981; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block; margin-top: 8px;">Review</a>
         </div>'''
     
@@ -232,7 +203,7 @@ def admin():
             <div class="stat"><div class="stat-num">{len(engineers)}</div><div>Engineers</div></div>
             <div class="stat"><div class="stat-num">{len(all_tests)}</div><div>Tests</div></div>
             <div class="stat"><div class="stat-num">{len(pending)}</div><div>Pending</div></div>
-            <div class="stat"><div class="stat-num">30</div><div>Questions</div></div>
+            <div class="stat"><div class="stat-num">9</div><div>Questions</div></div>
         </div>
         
         <div class="card">
@@ -244,9 +215,9 @@ def admin():
                 </select>
                 <select name="topic" required>
                     <option value="">Select Topic...</option>
-                    <option value="floorplanning">Floorplanning</option>
-                    <option value="placement">Placement</option>
-                    <option value="routing">Routing</option>
+                    <option value="scan_design">Scan Design</option>
+                    <option value="bist_mbist">BIST/MBIST</option>
+                    <option value="boundary_scan">Boundary Scan</option>
                 </select>
                 <button type="submit">Create</button>
             </form>
@@ -284,12 +255,11 @@ def admin_review(test_id):
     
     if request.method == 'POST':
         total = 0
-        for i in range(3):
-            try:
-                score = float(request.form.get(f'score_{i}', 0))
-                total += score
-            except:
-                pass
+        try:
+            score = float(request.form.get('score_0', 0))
+            total += score
+        except:
+            pass
         
         test['score'] = total
         test['status'] = 'completed'
@@ -360,24 +330,25 @@ def student():
     tests_html = ''
     for t in my_tests:
         status = t['status']
+        topic_display = t["topic"].replace("_", " ").title()
         if status == 'completed':
             tests_html += f'''
             <div style="background: white; border-radius: 12px; padding: 20px; margin: 15px 0;">
-                <h3>{t["topic"].title()} Test</h3>
+                <h3>{topic_display} Test</h3>
                 <div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 12px; border-radius: 8px; text-align: center;">
-                    <strong>Score: {t["score"]}/30</strong>
+                    <strong>Score: {t["score"]}/10</strong>
                 </div>
             </div>'''
         elif status == 'submitted':
             tests_html += f'''
             <div style="background: white; border-radius: 12px; padding: 20px; margin: 15px 0;">
-                <h3>{t["topic"].title()} Test</h3>
+                <h3>{topic_display} Test</h3>
                 <p style="color: #3b82f6; text-align: center;">Under Review</p>
             </div>'''
         else:
             tests_html += f'''
             <div style="background: white; border-radius: 12px; padding: 20px; margin: 15px 0;">
-                <h3>{t["topic"].title()} Test</h3>
+                <h3>{topic_display} Test</h3>
                 <a href="/student/test/{t["id"]}" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: block; text-align: center;">
                     Start Test
                 </a>
@@ -416,7 +387,7 @@ def student():
             <div class="stat"><div style="font-size: 20px; font-weight: bold;">{len(my_tests)}</div><div>Tests</div></div>
             <div class="stat"><div style="font-size: 20px; font-weight: bold;">{len([t for t in my_tests if t['status'] == 'completed'])}</div><div>Done</div></div>
             <div class="stat"><div style="font-size: 20px; font-weight: bold;">{user.get('exp', 0)}y</div><div>Experience</div></div>
-            <div class="stat"><div style="font-size: 20px; font-weight: bold;">3</div><div>Questions</div></div>
+            <div class="stat"><div style="font-size: 20px; font-weight: bold;">1</div><div>Question</div></div>
         </div>
         
         <div class="section">
@@ -438,12 +409,11 @@ def student_test(test_id):
     
     if request.method == 'POST' and test['status'] == 'pending':
         answers = {}
-        for i in range(3):
-            answer = request.form.get(f'answer_{i}', '').strip()
-            if answer:
-                answers[str(i)] = answer
+        answer = request.form.get('answer_0', '').strip()
+        if answer:
+            answers['0'] = answer
         
-        if len(answers) == 3:
+        if len(answers) == 1:
             test['answers'] = answers
             test['status'] = 'submitted'
         
@@ -454,7 +424,7 @@ def student_test(test_id):
         questions_html += f'''
         <div style="background: rgba(255,255,255,0.95); border-radius: 16px; padding: 24px; margin: 20px 0;">
             <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 8px 16px; border-radius: 20px; display: inline-block; margin-bottom: 16px;">
-                Question {i+1} of 3
+                Question {i+1} of 1
             </div>
             <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #667eea;">
                 {q}
@@ -463,11 +433,13 @@ def student_test(test_id):
             <textarea name="answer_{i}" style="width: 100%; min-height: 120px; padding: 16px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 14px;" placeholder="Provide detailed technical answer..." required></textarea>
         </div>'''
     
+    topic_display = test["topic"].replace("_", " ").title()
+    
     return f'''
 <!DOCTYPE html>
 <html>
 <head>
-    <title>{test["topic"].title()} Test</title>
+    <title>{topic_display} Test</title>
     <style>
         body {{ font-family: Arial; margin: 0; background: linear-gradient(135deg, #667eea, #764ba2); min-height: 100vh; }}
         .header {{ background: rgba(255,255,255,0.95); padding: 20px 0; position: sticky; top: 0; }}
@@ -482,7 +454,7 @@ def student_test(test_id):
     <div class="header">
         <div style="max-width: 1000px; margin: 0 auto; padding: 0 20px; text-align: center;">
             <h1 style="background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                {test["topic"].title()} Test
+                {topic_display} Test
             </h1>
         </div>
     </div>
