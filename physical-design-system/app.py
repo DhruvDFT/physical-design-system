@@ -1,4 +1,4 @@
-# app.py - Minimal PD System with ONLY Unique Questions Added
+# app.py - Minimal PD System with NEW Questions Added
 import os
 import hashlib
 from datetime import datetime, timedelta
@@ -12,43 +12,43 @@ users = {}
 assignments = {}
 counter = 0
 
-# Questions - 10 per topic, 3+ experience level (SAME AS WORKING VERSION)
+# Questions - 10 per topic, 3+ experience level (NEW QUESTIONS)
 QUESTIONS = {
     "floorplanning": [
-        "You have a 5mm x 5mm die with 4 hard macros (each 1mm x 0.8mm) and need to achieve 70% utilization. Describe your macro placement strategy considering timing and power delivery.",
-        "Your design has setup timing violations on paths crossing from left to right. The floorplan has macros placed randomly. How would you reorganize the floorplan to improve timing?",
-        "During floorplan, you notice routing congestion in the center region. What are 3 specific techniques you would use to reduce congestion without major timing impact?",
-        "Your design has 3 voltage domains (0.9V core, 1.2V IO, 0.7V retention). Explain how you would plan the floorplan to minimize level shifter count and power grid complexity.",
-        "You need to place 12 memory instances (8 SRAMs, 4 ROMs) in your design. What factors would you consider for their placement, and how would you verify floorplan quality?",
-        "Your floorplan review shows IR drop violations exceeding 50mV in certain regions. Describe your approach to fix this through floorplan changes and power grid improvements.",
-        "You're told to reduce die area by 15% while maintaining timing closure. What floorplan modifications would you make and what risks would you monitor?",
-        "Your design has mixed-signal blocks requiring 60dB isolation from digital switching noise. How would you handle their placement and what guard techniques would you use?",
-        "During early floorplan, how would you estimate routing congestion and what tools/techniques help predict routability issues before placement?",
-        "Your hierarchical design has 5 major blocks with complex timing constraints between them. Explain your approach to partition-level floorplanning and interface planning."
+        "Your chip has 8 voltage domains with different power requirements (1.8V, 1.2V, 0.9V, 0.6V). Design a floorplan strategy that minimizes the number of level shifters while ensuring proper power delivery. What are the key considerations for domain boundary placement?",
+        "You're working on a 7nm design with double patterning requirements. How would you modify your floorplan approach to handle SRAM compiler restrictions and ensure routing feasibility across different metal layers?",
+        "Your design requires 15 different clock domains with frequencies ranging from 50MHz to 2GHz. Describe your floorplanning strategy to minimize clock skew and reduce power consumption from clock distribution networks.",
+        "During floorplan optimization, you discover that your critical timing paths have excessive wire delays due to poor macro placement. What systematic approach would you use to relocate macros while maintaining area efficiency?",
+        "Your mixed-signal design has 6 ADCs requiring 80dB PSRR and 4 PLLs sensitive to substrate noise. How would you plan the floorplan to achieve isolation requirements while optimizing for routability and thermal management?",
+        "You need to implement power gating for 12 different functional blocks with varying wake-up time requirements. How would you organize the floorplan to minimize the impact on timing closure and power grid design?",
+        "Your design has temperature hotspots exceeding 125°C in simulation. What floorplan modifications would you implement to improve thermal distribution, and how would you validate the thermal impact of your changes?",
+        "You're tasked with creating a hierarchical floorplan for a multi-core processor with 8 identical cores plus shared L3 cache. Describe your approach to balance area efficiency, thermal considerations, and inter-core communication latency.",
+        "Your floorplan review shows that 30% of nets will require more than 3 routing layers due to congestion. What specific floorplan adjustments would you make to reduce routing complexity while maintaining functional correctness?",
+        "You have a design with 20 high-speed differential pairs (10Gbps+) that must maintain controlled impedance. How would you plan the floorplan to ensure signal integrity requirements are met while optimizing for area and power?"
     ],
     "placement": [
-        "Your placement run shows timing violations on 20 critical paths with negative slack up to -50ps. Describe your systematic approach to fix these violations.",
-        "You're seeing routing congestion hotspots after placement in 2-3 regions. What placement adjustments would you make to improve routability?",
-        "Your design has high-fanout nets (>500 fanout) causing placement issues. How would you handle these nets during placement optimization?",
-        "Compare global placement vs detailed placement - what specific problems does each solve and when would you iterate between them?",
-        "Your placement shows leakage power 20% higher than target. What placement techniques would you use to reduce power while maintaining timing?",
-        "You have a multi-voltage design with 3 voltage islands. Describe your placement strategy for cells near domain boundaries and level shifter placement.",
-        "Your timing report shows 150 hold violations scattered across the design. How would you address this through placement without affecting setup timing?",
-        "During placement, you notice certain instances are creating routes longer than 500um. What tools and techniques help identify and fix such placement issues?",
-        "Your design has 200+ clock gating cells. Explain their optimal placement strategy and impact on both power and timing closure.",
-        "You're working with a design that has both high-performance (1GHz) and low-power (100MHz) modes. How does this affect your placement strategy and optimization targets?"
+        "Your placement results show 500+ timing violations with the worst negative slack of -200ps on critical paths. Develop a systematic recovery plan that addresses both setup and hold timing without significantly impacting power or area.",
+        "You're implementing a design with 50,000+ flip-flops across 15 clock domains. Describe your placement strategy to minimize clock power while ensuring timing closure and managing clock domain crossing requirements.",
+        "Your design has 300 high-fanout nets (fanout >1000) causing placement convergence issues. What specific techniques would you employ to handle these nets during global and detailed placement phases?",
+        "After placement, your power analysis shows 40% higher dynamic power than target due to excessive switching activity. How would you modify your placement approach to reduce power while maintaining performance targets?",
+        "You're working with a multi-Vt design using 4 different threshold voltage options (ULVT, LVT, RVT, HVT). Explain your placement optimization strategy to balance timing, power, and leakage requirements.",
+        "Your design requires implementing scan chains with specific capture and shift mode timing requirements. How would you optimize placement to minimize impact on functional timing while meeting DFT constraints?",
+        "You have a design with 1000+ memory instances of varying sizes that need to be placed optimally. What factors would you consider for memory placement, and how would you handle the interaction with logic placement?",
+        "Your placement shows routing congestion exceeding 85% utilization in 25% of the chip area. What placement techniques would you use to redistribute logic and improve routability without timing degradation?",
+        "You're implementing clock gating with 800+ ICG cells that need optimal placement for both power savings and timing closure. Describe your methodology for ICG placement and its impact on overall design optimization.",
+        "Your design has critical nets with max transition time violations after placement. How would you address these violations through placement adjustments, buffer insertion, and driver sizing strategies?"
     ],
     "routing": [
-        "After global routing, you have 500 DRC violations (spacing, via, width). Describe your systematic approach to resolve these violations efficiently.",
-        "Your design has 10 differential pairs for high-speed signals. Explain your routing strategy to maintain 100-ohm impedance and minimize skew.",
-        "You're seeing timing degradation after detailed routing compared to placement timing. What causes this and how would you recover the timing?",
-        "Your router is struggling with congestion in certain regions leading to 5% routing non-completion. What techniques would you use to achieve 100% routing?",
-        "Describe your approach to power/ground routing for a 200A peak current design. How do you ensure adequate current carrying capacity and low IR drop?",
-        "Your design has specific layer constraints (no routing on M1 except local connections, M2-M3 for signal, M4-M6 for power). How does this impact your routing strategy?",
-        "You have crosstalk violations on 50 critical nets causing functional failures. Explain your routing techniques to minimize crosstalk and meet noise requirements.",
-        "Your clock distribution network requires <50ps skew across 10,000 flops. Describe clock routing methodology and skew optimization techniques.",
-        "During routing, some power nets are showing electromigration violations. How would you address current density issues through routing changes and via sizing?",
-        "You need to route in a 7nm design with double patterning constraints. Explain the challenges and your approach to handle LELE (Litho-Etch-Litho-Etch) decomposition issues."
+        "Your detailed routing shows 2000+ DRC violations including minimum spacing, via enclosure, and metal density issues. Create a systematic debugging and resolution strategy that prioritizes violations by impact and difficulty.",
+        "You're routing a high-speed DDR5 interface with 64 data lines requiring length matching within ±10ps and controlled impedance of 50Ω ±10%. Describe your routing methodology and verification approach.",
+        "Your design has 50 critical nets showing crosstalk-induced timing violations exceeding 30ps. What routing techniques would you implement to reduce coupling while maintaining routability and meeting timing requirements?",
+        "After routing completion, you discover 15% of your design has metal density violations that could impact manufacturing yield. How would you address these violations through routing modifications and fill strategies?",
+        "Your power delivery network requires handling 150A peak current with IR drop <50mV across the chip. Design your power routing strategy including layer assignment, via sizing, and current density management.",
+        "You're implementing a clock distribution network for a 1.5GHz design with 25,000 flip-flops requiring <25ps skew. Describe your clock routing methodology, including tree synthesis and skew optimization techniques.",
+        "Your routing has 200+ electromigration violations on critical power and signal nets. What modifications would you make to via sizing, wire widths, and current path optimization to resolve these issues?",
+        "You need to route in a 5nm process with quadruple patterning on critical layers. Explain how you would handle the decomposition challenges and ensure manufacturability while maintaining performance targets.",
+        "Your design has 100+ antenna violations that could cause gate oxide damage during manufacturing. What routing strategies would you implement to prevent antenna accumulation during the fabrication process?",
+        "You're routing a mixed-signal design where digital switching noise is coupling into sensitive analog circuits, causing 20dB degradation in SNR. How would you modify your routing approach to achieve the required isolation?"
     ]
 }
 
@@ -78,6 +78,89 @@ def init_data():
             'exp': 3 + (i % 3)
         }
 
+def analyze_answer_quality(question, answer, topic):
+    """
+    Analyzes answer quality and suggests a score based on technical content
+    Returns: (suggested_score, reasoning)
+    """
+    if not answer or len(answer.strip()) < 20:
+        return 0, "Answer too short or empty"
+    
+    answer_lower = answer.lower()
+    
+    # Define key technical terms and concepts for each topic
+    scoring_criteria = {
+        'floorplanning': {
+            'excellent_terms': ['voltage domain', 'level shifter', 'power delivery', 'thermal', 'isolation', 'macro placement', 'utilization', 'congestion', 'timing closure', 'ir drop', 'power grid', 'mixed-signal'],
+            'good_terms': ['placement', 'routing', 'timing', 'power', 'area', 'floorplan', 'design', 'optimization', 'constraint', 'metal layer'],
+            'methodology_terms': ['systematic', 'approach', 'strategy', 'methodology', 'analysis', 'verification', 'optimization', 'iteration']
+        },
+        'placement': {
+            'excellent_terms': ['timing violation', 'setup time', 'hold time', 'slack', 'congestion', 'utilization', 'fanout', 'clock domain', 'power optimization', 'multi-vt', 'threshold voltage'],
+            'good_terms': ['placement', 'timing', 'routing', 'optimization', 'constraint', 'critical path', 'delay', 'buffer', 'clock', 'power'],
+            'methodology_terms': ['global placement', 'detailed placement', 'incremental', 'systematic', 'iterative', 'optimization', 'analysis']
+        },
+        'routing': {
+            'excellent_terms': ['drc violation', 'crosstalk', 'coupling', 'skew', 'impedance', 'differential pair', 'electromigration', 'current density', 'metal density', 'antenna effect'],
+            'good_terms': ['routing', 'via', 'spacing', 'width', 'layer', 'signal integrity', 'timing', 'power', 'ground', 'clock'],
+            'methodology_terms': ['global routing', 'detailed routing', 'systematic', 'layer assignment', 'optimization', 'verification', 'debugging']
+        }
+    }
+    
+    criteria = scoring_criteria.get(topic, scoring_criteria['floorplanning'])
+    
+    # Count relevant technical terms
+    excellent_count = sum(1 for term in criteria['excellent_terms'] if term in answer_lower)
+    good_count = sum(1 for term in criteria['good_terms'] if term in answer_lower)
+    methodology_count = sum(1 for term in criteria['methodology_terms'] if term in answer_lower)
+    
+    # Calculate base score based on technical content
+    base_score = 0
+    
+    # Length and structure analysis
+    word_count = len(answer.split())
+    has_structure = any(marker in answer_lower for marker in ['1.', '2.', 'first', 'second', 'step', 'approach', 'strategy'])
+    has_examples = any(marker in answer_lower for marker in ['example', 'for instance', 'such as', 'e.g.', 'like'])
+    
+    # Scoring logic
+    if excellent_count >= 3 and word_count >= 100:
+        base_score = 8
+        reasoning = f"Strong technical content ({excellent_count} advanced terms)"
+    elif excellent_count >= 2 and word_count >= 60:
+        base_score = 7
+        reasoning = f"Good technical knowledge ({excellent_count} advanced terms)"
+    elif excellent_count >= 1 or good_count >= 3:
+        base_score = 6
+        reasoning = f"Adequate technical understanding"
+    elif good_count >= 2 and word_count >= 40:
+        base_score = 5
+        reasoning = f"Basic technical knowledge"
+    elif word_count >= 30:
+        base_score = 4
+        reasoning = "Limited technical content"
+    else:
+        base_score = 3
+        reasoning = "Insufficient technical detail"
+    
+    # Bonus points for methodology and structure
+    if methodology_count >= 2:
+        base_score += 1
+        reasoning += " + systematic approach"
+    if has_structure:
+        base_score += 0.5
+        reasoning += " + well-structured"
+    if has_examples and word_count >= 80:
+        base_score += 0.5
+        reasoning += " + practical examples"
+    
+    # Cap at 10 and round
+    final_score = min(10, round(base_score))
+    
+    # Add word count info
+    reasoning += f" ({word_count} words)"
+    
+    return final_score, reasoning
+
 def create_test(eng_id, topic):
     global counter
     counter += 1
@@ -98,7 +181,8 @@ def create_test(eng_id, topic):
         'status': 'pending',
         'created': datetime.now().isoformat(),
         'due': (datetime.now() + timedelta(days=3)).isoformat(),
-        'score': None
+        'score': None,
+        'auto_scores': {}  # Store AI-suggested scores
     }
     
     assignments[test_id] = test
@@ -276,6 +360,19 @@ def admin_review(test_id):
     if not test:
         return redirect('/admin')
     
+    # Auto-analyze answers if not done yet
+    if 'auto_scores' not in test:
+        test['auto_scores'] = {}
+        for i, answer in test.get('answers', {}).items():
+            if answer and answer != 'No answer':
+                suggested_score, reasoning = analyze_answer_quality(
+                    test['questions'][int(i)], answer, test['topic']
+                )
+                test['auto_scores'][i] = {
+                    'score': suggested_score,
+                    'reasoning': reasoning
+                }
+    
     if request.method == 'POST':
         total = 0
         for i in range(10):  # Now 10 questions
@@ -292,8 +389,22 @@ def admin_review(test_id):
     questions_html = ''
     for i, q in enumerate(test['questions']):
         answer = test.get('answers', {}).get(str(i), 'No answer')
+        
+        # Get AI suggestion
+        auto_score_data = test.get('auto_scores', {}).get(str(i), {'score': 0, 'reasoning': 'No analysis available'})
+        suggested_score = auto_score_data['score']
+        reasoning = auto_score_data['reasoning']
+        
+        # Color coding for AI suggestion
+        if suggested_score >= 8:
+            suggestion_color = "#10b981"  # Green
+        elif suggested_score >= 6:
+            suggestion_color = "#f59e0b"  # Yellow
+        else:
+            suggestion_color = "#ef4444"  # Red
+        
         questions_html += f'''
-        <div style="background: white; border-radius: 8px; padding: 20px; margin: 15px 0;">
+        <div style="background: white; border-radius: 8px; padding: 20px; margin: 15px 0; border-left: 4px solid {suggestion_color};">
             <h4>Question {i+1}</h4>
             <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 10px 0;">
                 {q}
@@ -302,10 +413,21 @@ def admin_review(test_id):
             <div style="background: #fefefe; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; font-family: monospace; white-space: pre-wrap;">
                 {answer}
             </div>
+            <div style="background: #f8fafc; border-radius: 6px; padding: 12px; margin: 10px 0; border: 1px solid #e2e8f0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="background: {suggestion_color}; color: white; padding: 4px 12px; border-radius: 20px; font-weight: bold;">
+                        AI Suggests: {suggested_score}/10
+                    </span>
+                    <span style="color: #64748b; font-size: 14px;">{reasoning}</span>
+                </div>
+            </div>
             <div style="margin: 15px 0;">
-                <label><strong>Score:</strong></label>
-                <input type="number" name="score_{i}" min="0" max="10" value="7" style="width: 60px; padding: 5px;">
+                <label><strong>Your Score:</strong></label>
+                <input type="number" name="score_{i}" min="0" max="10" value="{suggested_score}" style="width: 60px; padding: 5px; border: 2px solid {suggestion_color};">
                 <span>/10</span>
+                <button type="button" onclick="this.previousElementSibling.previousElementSibling.value={suggested_score}" style="margin-left: 10px; padding: 4px 8px; background: {suggestion_color}; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                    Use AI Score
+                </button>
             </div>
         </div>'''
     
