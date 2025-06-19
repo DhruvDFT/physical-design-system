@@ -261,33 +261,221 @@ def login():
 <!DOCTYPE html>
 <html>
 <head>
-    <title>PD Assessment Login</title>
+    <title>Vibhuayu Technologies - PD Assessment</title>
     <style>
-        body { font-family: Arial; background: linear-gradient(135deg, #667eea, #764ba2); min-height: 100vh; display: flex; align-items: center; justify-content: center; margin: 0; }
-        .box { background: rgba(255,255,255,0.95); padding: 40px; border-radius: 20px; width: 350px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
-        h1 { background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 30px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; }
-        input:focus { outline: none; border-color: #667eea; }
-        button { width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
-        .info { background: #f0f9ff; border: 1px solid #0ea5e9; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%); 
+            min-height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            position: relative;
+            overflow: hidden;
+        }
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 30% 40%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%);
+            z-index: 1;
+        }
+        .container {
+            position: relative;
+            z-index: 2;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 50px 40px;
+            width: 450px;
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.25),
+                0 0 0 1px rgba(255, 255, 255, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+        .logo-section {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #2563eb, #7c3aed, #db2777);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        .logo::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+            transform: translateX(-100%);
+            animation: shine 3s infinite;
+        }
+        .logo-text {
+            color: white;
+            font-size: 36px;
+            font-weight: 900;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            font-family: 'Arial Black', sans-serif;
+        }
+        @keyframes shine {
+            0% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+            100% { transform: translateX(100%); }
+        }
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1e293b, #475569);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: #64748b;
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 35px;
+        }
+        .form-group {
+            margin-bottom: 24px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #374151;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            background: white;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+        }
+        .login-btn:active {
+            transform: translateY(0);
+        }
+        .info-card {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+        }
+        .info-title {
+            color: #1e293b;
+            font-weight: 700;
+            margin-bottom: 16px;
+            font-size: 16px;
+        }
+        .credentials {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+            border-left: 4px solid #3b82f6;
+        }
+        .eng-list {
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.6;
+            margin-top: 12px;
+        }
+        .footer {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            z-index: 2;
+        }
     </style>
 </head>
 <body>
-    <div class="box">
-        <h1>PD Assessment</h1>
-        <form method="POST">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">Login</button>
-        </form>
-        <div class="info">
-            <strong>Test Login:</strong><br>
-            Engineers: eng001-eng009<br>
-            Password: password123<br>
-            <small>eng001: Kranthi & Neela | eng002: Bhanu & Lokeshwari | eng003: Nagesh & VJ<br>
-            eng004: Pravalika & Daniel | eng005: Karthik & Hema | eng006: Naveen & Srinivas<br>
-            eng007: Meera & Suraj | eng008: Akhil & Vikas | eng009: Sahith & Sravan</small>
+    <div class="container">
+        <div class="logo-section">
+            <div class="logo">
+                <div class="logo-text">V7</div>
+            </div>
+            <div class="title">PD Assessment Portal</div>
+            <div class="subtitle">Physical Design Evaluation System</div>
         </div>
+        
+        <form method="POST">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" class="form-input" placeholder="Enter your username" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" class="form-input" placeholder="Enter your password" required>
+            </div>
+            <button type="submit" class="login-btn">Access Assessment Portal</button>
+        </form>
+        
+        <div class="info-card">
+            <div class="info-title">🔐 Test Credentials</div>
+            <div class="credentials">
+                <strong>Engineers:</strong> eng001 through eng009<br>
+                <strong>Password:</strong> password123
+            </div>
+            <div class="eng-list">
+                <strong>Team Members:</strong><br>
+                eng001: Kranthi & Neela • eng002: Bhanu & Lokeshwari • eng003: Nagesh & VJ<br>
+                eng004: Pravalika & Daniel • eng005: Karthik & Hema • eng006: Naveen & Srinivas<br>
+                eng007: Meera & Suraj • eng008: Akhil & Vikas • eng009: Sahith & Sravan
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        Vibhuayu Technologies © 2025 | Secure Assessment Platform
     </div>
 </body>
 </html>'''
@@ -314,69 +502,280 @@ def admin():
     pending_html = ''
     for p in pending:
         pending_html += f'''
-        <div style="background: #f8fafc; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <strong>{p["topic"].title()} - {users.get(p["engineer_id"], {}).get('display_name', p["engineer_id"])}</strong><br>
-            <small>15 Questions | Max: 150 points</small><br>
-            <a href="/admin/review/{p["id"]}" style="background: #10b981; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block; margin-top: 8px;">Review</a>
+        <div class="pending-item">
+            <div class="pending-title">{p["topic"].title()} Assessment - {users.get(p["engineer_id"], {}).get('display_name', p["engineer_id"])}</div>
+            <div class="pending-meta">📝 15 Questions | 🎯 Max: 150 points | ⏰ Submitted for review</div>
+            <a href="/admin/review/{p["id"]}" class="review-btn">Review Assessment</a>
         </div>'''
     
     if not pending_html:
-        pending_html = '<p style="text-align: center; color: #64748b; padding: 40px;">No pending reviews</p>'
+        pending_html = '<div class="no-pending"><h3>📭 No Pending Reviews</h3><p>All assessments have been reviewed and completed.</p></div>'
     
     return f'''
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Dashboard</title>
+    <title>Vibhuayu Technologies - Admin Dashboard</title>
     <style>
-        body {{ font-family: Arial; margin: 0; background: #f8fafc; }}
-        .header {{ background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 20px 0; }}
-        .container {{ max-width: 1000px; margin: 20px auto; padding: 0 20px; }}
-        .stats {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }}
-        .stat {{ background: white; padding: 20px; border-radius: 8px; text-align: center; }}
-        .stat-num {{ font-size: 24px; font-weight: bold; color: #1e40af; }}
-        .card {{ background: white; border-radius: 8px; padding: 20px; margin: 20px 0; }}
-        select, button {{ padding: 10px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; }}
-        button {{ background: #3b82f6; color: white; border: none; cursor: pointer; }}
-        .logout {{ background: rgba(255,255,255,0.2); color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; float: right; }}
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
+            min-height: 100vh;
+            color: #334155;
+        }}
+        .header {{ 
+            background: linear-gradient(135deg, #1e40af, #3b82f6); 
+            padding: 20px 0; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }}
+        .header::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+            transform: translateX(-100%);
+            animation: headerShine 4s infinite;
+        }}
+        @keyframes headerShine {{
+            0% {{ transform: translateX(-100%); }}
+            50% {{ transform: translateX(100%); }}
+            100% {{ transform: translateX(100%); }}
+        }}
+        .header-content {{
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 2;
+        }}
+        .header-title {{
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }}
+        .header-logo {{
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            color: white;
+            font-size: 20px;
+            backdrop-filter: blur(10px);
+        }}
+        .header h1 {{ 
+            color: white; 
+            font-size: 28px; 
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }}
+        .logout {{ 
+            background: rgba(255, 255, 255, 0.15); 
+            color: white; 
+            padding: 12px 20px; 
+            text-decoration: none; 
+            border-radius: 10px; 
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }}
+        .logout:hover {{
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+        }}
+        .container {{ 
+            max-width: 1200px; 
+            margin: 30px auto; 
+            padding: 0 20px; 
+        }}
+        .stats {{ 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 25px; 
+            margin-bottom: 40px; 
+        }}
+        .stat {{ 
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); 
+            padding: 30px; 
+            border-radius: 16px; 
+            text-align: center; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease;
+        }}
+        .stat:hover {{
+            transform: translateY(-5px);
+        }}
+        .stat-num {{ 
+            font-size: 36px; 
+            font-weight: 800; 
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }}
+        .stat-label {{
+            color: #64748b;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }}
+        .card {{ 
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); 
+            border-radius: 20px; 
+            padding: 30px; 
+            margin: 25px 0; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }}
+        .card h2 {{
+            color: #1e293b;
+            margin-bottom: 25px;
+            font-size: 24px;
+            font-weight: 700;
+        }}
+        .form-row {{
+            display: flex;
+            gap: 15px;
+            align-items: end;
+        }}
+        select, button {{ 
+            padding: 14px 18px; 
+            border: 2px solid #e2e8f0; 
+            border-radius: 10px; 
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+        }}
+        select:focus {{
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }}
+        .btn-primary {{ 
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8); 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: 600;
+            min-width: 120px;
+        }}
+        .btn-primary:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+        }}
+        .pending-item {{
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9); 
+            padding: 20px; 
+            margin: 15px 0; 
+            border-radius: 12px; 
+            border-left: 4px solid #10b981;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease;
+        }}
+        .pending-item:hover {{
+            transform: translateX(5px);
+        }}
+        .pending-title {{
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }}
+        .pending-meta {{
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }}
+        .review-btn {{
+            background: linear-gradient(135deg, #10b981, #059669); 
+            color: white; 
+            padding: 10px 20px; 
+            text-decoration: none; 
+            border-radius: 8px; 
+            display: inline-block;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }}
+        .review-btn:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+        }}
+        .no-pending {{
+            text-align: center; 
+            color: #64748b; 
+            padding: 60px 20px;
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border-radius: 12px;
+            border: 2px dashed #cbd5e1;
+        }}
     </style>
 </head>
 <body>
     <div class="header">
-        <div style="max-width: 1000px; margin: 0 auto; padding: 0 20px;">
-            <h1>Admin Dashboard
-                <a href="/logout" class="logout">Logout</a>
-            </h1>
+        <div class="header-content">
+            <div class="header-title">
+                <div class="header-logo">V7</div>
+                <h1>Admin Dashboard</h1>
+            </div>
+            <a href="/logout" class="logout">Logout</a>
         </div>
     </div>
     
     <div class="container">
         <div class="stats">
-            <div class="stat"><div class="stat-num">{len(engineers)}</div><div>Engineers</div></div>
-            <div class="stat"><div class="stat-num">{len(all_tests)}</div><div>Tests</div></div>
-            <div class="stat"><div class="stat-num">{len(pending)}</div><div>Pending</div></div>
-            <div class="stat"><div class="stat-num">45</div><div>Questions</div></div>
+            <div class="stat">
+                <div class="stat-num">{len(engineers)}</div>
+                <div class="stat-label">Engineers</div>
+            </div>
+            <div class="stat">
+                <div class="stat-num">{len(all_tests)}</div>
+                <div class="stat-label">Total Tests</div>
+            </div>
+            <div class="stat">
+                <div class="stat-num">{len(pending)}</div>
+                <div class="stat-label">Pending Reviews</div>
+            </div>
+            <div class="stat">
+                <div class="stat-num">45</div>
+                <div class="stat-label">Questions</div>
+            </div>
         </div>
         
         <div class="card">
-            <h2>Create Test</h2>
+            <h2>🎯 Create New Assessment</h2>
             <form method="POST" action="/admin/create">
-                <select name="engineer_id" required>
-                    <option value="">Select Engineer...</option>
-                    {eng_options}
-                </select>
-                <select name="topic" required>
-                    <option value="">Select Topic...</option>
-                    <option value="floorplanning">Floorplanning</option>
-                    <option value="placement">Placement</option>
-                    <option value="routing">Routing</option>
-                </select>
-                <button type="submit">Create</button>
+                <div class="form-row">
+                    <select name="engineer_id" required>
+                        <option value="">Select Engineer...</option>
+                        {eng_options}
+                    </select>
+                    <select name="topic" required>
+                        <option value="">Select Topic...</option>
+                        <option value="floorplanning">🏗️ Floorplanning</option>
+                        <option value="placement">📍 Placement</option>
+                        <option value="routing">🔗 Routing</option>
+                    </select>
+                    <button type="submit" class="btn-primary">Create Assessment</button>
+                </div>
             </form>
         </div>
         
         <div class="card">
-            <h2>Pending Reviews</h2>
+            <h2>📋 Pending Reviews</h2>
             {pending_html}
         </div>
     </div>
