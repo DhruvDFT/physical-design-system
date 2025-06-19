@@ -12,43 +12,73 @@ users = {}
 assignments = {}
 counter = 0
 
-# Questions - 10 per topic, 3+ experience level (NEW QUESTIONS)
+# Questions - 15 per topic, 3+ experience level (NEW QUESTIONS - 3 SETS OF 5 EACH)
 QUESTIONS = {
     "floorplanning": [
+        # Set 1 (Questions 1-5)
         "Your chip has 8 voltage domains with different power requirements (1.8V, 1.2V, 0.9V, 0.6V). Design a floorplan strategy that minimizes the number of level shifters while ensuring proper power delivery. What are the key considerations for domain boundary placement?",
         "You're working on a 7nm design with double patterning requirements. How would you modify your floorplan approach to handle SRAM compiler restrictions and ensure routing feasibility across different metal layers?",
         "Your design requires 15 different clock domains with frequencies ranging from 50MHz to 2GHz. Describe your floorplanning strategy to minimize clock skew and reduce power consumption from clock distribution networks.",
         "During floorplan optimization, you discover that your critical timing paths have excessive wire delays due to poor macro placement. What systematic approach would you use to relocate macros while maintaining area efficiency?",
         "Your mixed-signal design has 6 ADCs requiring 80dB PSRR and 4 PLLs sensitive to substrate noise. How would you plan the floorplan to achieve isolation requirements while optimizing for routability and thermal management?",
+        
+        # Set 2 (Questions 6-10)
         "You need to implement power gating for 12 different functional blocks with varying wake-up time requirements. How would you organize the floorplan to minimize the impact on timing closure and power grid design?",
         "Your design has temperature hotspots exceeding 125°C in simulation. What floorplan modifications would you implement to improve thermal distribution, and how would you validate the thermal impact of your changes?",
         "You're tasked with creating a hierarchical floorplan for a multi-core processor with 8 identical cores plus shared L3 cache. Describe your approach to balance area efficiency, thermal considerations, and inter-core communication latency.",
         "Your floorplan review shows that 30% of nets will require more than 3 routing layers due to congestion. What specific floorplan adjustments would you make to reduce routing complexity while maintaining functional correctness?",
-        "You have a design with 20 high-speed differential pairs (10Gbps+) that must maintain controlled impedance. How would you plan the floorplan to ensure signal integrity requirements are met while optimizing for area and power?"
+        "You have a design with 20 high-speed differential pairs (10Gbps+) that must maintain controlled impedance. How would you plan the floorplan to ensure signal integrity requirements are met while optimizing for area and power?",
+        
+        # Set 3 (Questions 11-15)
+        "Your SoC design has 25 different IP blocks with varying power consumption patterns. How would you create a power-aware floorplan that enables dynamic voltage and frequency scaling while maintaining timing closure across all operating modes?",
+        "You're implementing a chiplet-based design with 4 compute dies and 1 I/O die. What are the key floorplanning considerations for inter-die communication, thermal coupling, and mechanical stress distribution across the package?",
+        "Your design has 200+ clock gating cells distributed across the chip. Describe your floorplanning strategy to optimize clock gating effectiveness while minimizing clock tree power and ensuring proper enable signal timing.",
+        "You need to floorplan a design with 50 different voltage and frequency islands for ultra-low power operation. How would you handle the complexity of multiple power domains, retention strategies, and isolation cell placement?",
+        "Your automotive chip requires functional safety compliance with redundant processing units. How would you floorplan for fault isolation, redundancy implementation, and failure mode analysis while meeting area and power targets?"
     ],
     "placement": [
+        # Set 1 (Questions 1-5)
         "Your placement results show 500+ timing violations with the worst negative slack of -200ps on critical paths. Develop a systematic recovery plan that addresses both setup and hold timing without significantly impacting power or area.",
         "You're implementing a design with 50,000+ flip-flops across 15 clock domains. Describe your placement strategy to minimize clock power while ensuring timing closure and managing clock domain crossing requirements.",
         "Your design has 300 high-fanout nets (fanout >1000) causing placement convergence issues. What specific techniques would you employ to handle these nets during global and detailed placement phases?",
         "After placement, your power analysis shows 40% higher dynamic power than target due to excessive switching activity. How would you modify your placement approach to reduce power while maintaining performance targets?",
         "You're working with a multi-Vt design using 4 different threshold voltage options (ULVT, LVT, RVT, HVT). Explain your placement optimization strategy to balance timing, power, and leakage requirements.",
+        
+        # Set 2 (Questions 6-10)
         "Your design requires implementing scan chains with specific capture and shift mode timing requirements. How would you optimize placement to minimize impact on functional timing while meeting DFT constraints?",
         "You have a design with 1000+ memory instances of varying sizes that need to be placed optimally. What factors would you consider for memory placement, and how would you handle the interaction with logic placement?",
         "Your placement shows routing congestion exceeding 85% utilization in 25% of the chip area. What placement techniques would you use to redistribute logic and improve routability without timing degradation?",
         "You're implementing clock gating with 800+ ICG cells that need optimal placement for both power savings and timing closure. Describe your methodology for ICG placement and its impact on overall design optimization.",
-        "Your design has critical nets with max transition time violations after placement. How would you address these violations through placement adjustments, buffer insertion, and driver sizing strategies?"
+        "Your design has critical nets with max transition time violations after placement. How would you address these violations through placement adjustments, buffer insertion, and driver sizing strategies?",
+        
+        # Set 3 (Questions 11-15)
+        "You're placing a machine learning accelerator with 10,000+ MAC units that have specific dataflow patterns. How would you optimize placement to minimize interconnect latency and maximize compute throughput while managing power density?",
+        "Your design has 150+ power switches for fine-grained power gating. Describe your placement strategy to minimize power switch overhead while ensuring adequate current delivery and meeting wake-up time requirements.",
+        "You need to place a design with 500+ high-speed I/O pads around the periphery. How would you optimize the placement of I/O logic and buffers to minimize simultaneous switching noise and ensure signal integrity?",
+        "Your placement run shows 2000+ antenna violations during preliminary routing estimation. What placement modifications would you implement to reduce antenna accumulation while maintaining timing and congestion targets?",
+        "You're implementing a safety-critical design with TMR (Triple Modular Redundancy) logic. How would you place the redundant modules to maximize fault isolation while minimizing area overhead and maintaining timing correlation?"
     ],
     "routing": [
+        # Set 1 (Questions 1-5)
         "Your detailed routing shows 2000+ DRC violations including minimum spacing, via enclosure, and metal density issues. Create a systematic debugging and resolution strategy that prioritizes violations by impact and difficulty.",
         "You're routing a high-speed DDR5 interface with 64 data lines requiring length matching within ±10ps and controlled impedance of 50Ω ±10%. Describe your routing methodology and verification approach.",
         "Your design has 50 critical nets showing crosstalk-induced timing violations exceeding 30ps. What routing techniques would you implement to reduce coupling while maintaining routability and meeting timing requirements?",
         "After routing completion, you discover 15% of your design has metal density violations that could impact manufacturing yield. How would you address these violations through routing modifications and fill strategies?",
         "Your power delivery network requires handling 150A peak current with IR drop <50mV across the chip. Design your power routing strategy including layer assignment, via sizing, and current density management.",
+        
+        # Set 2 (Questions 6-10)
         "You're implementing a clock distribution network for a 1.5GHz design with 25,000 flip-flops requiring <25ps skew. Describe your clock routing methodology, including tree synthesis and skew optimization techniques.",
         "Your routing has 200+ electromigration violations on critical power and signal nets. What modifications would you make to via sizing, wire widths, and current path optimization to resolve these issues?",
         "You need to route in a 5nm process with quadruple patterning on critical layers. Explain how you would handle the decomposition challenges and ensure manufacturability while maintaining performance targets.",
         "Your design has 100+ antenna violations that could cause gate oxide damage during manufacturing. What routing strategies would you implement to prevent antenna accumulation during the fabrication process?",
-        "You're routing a mixed-signal design where digital switching noise is coupling into sensitive analog circuits, causing 20dB degradation in SNR. How would you modify your routing approach to achieve the required isolation?"
+        "You're routing a mixed-signal design where digital switching noise is coupling into sensitive analog circuits, causing 20dB degradation in SNR. How would you modify your routing approach to achieve the required isolation?",
+        
+        # Set 3 (Questions 11-15)
+        "Your high-speed SerDes design requires routing 32 differential pairs at 25Gbps with strict jitter requirements. Describe your routing strategy for maintaining signal integrity, including layer stackup considerations and crosstalk mitigation.",
+        "You need to route a design with 1000+ power domains requiring individual power gating controls. How would you handle the routing complexity of power switches, isolation signals, and retention power while minimizing area overhead?",
+        "Your routing is failing convergence due to 5000+ short violations in dense standard cell regions. What routing parameter adjustments and design modifications would you implement to achieve 100% routing completion?",
+        "You're routing a 3D IC with through-silicon vias (TSVs) connecting 4 stacked dies. Describe your routing methodology for managing inter-die connections, thermal considerations, and yield optimization across the stack.",
+        "Your design has 500+ critical nets requiring redundant routing for fault tolerance. How would you implement redundant path routing while managing area overhead, delay matching, and failure mode isolation?"
     ]
 }
 
@@ -68,14 +98,27 @@ def init_data():
         'exp': 5
     }
     
-    for i in range(1, 6):
-        uid = f'eng00{i}'
+    # 9 Engineers with actual names
+    engineer_data = [
+        ('eng001', 'Kranthi & Neela'),
+        ('eng002', 'Bhanu & Lokeshwari'),
+        ('eng003', 'Nagesh & VJ'),
+        ('eng004', 'Pravalika & Daniel'),
+        ('eng005', 'Karthik & Hema'),
+        ('eng006', 'Naveen & Srinivas'),
+        ('eng007', 'Meera & Suraj'),
+        ('eng008', 'Akhil & Vikas'),
+        ('eng009', 'Sahith & Sravan')
+    ]
+    
+    for uid, display_name in engineer_data:
         users[uid] = {
             'id': uid,
             'username': uid,
+            'display_name': display_name,
             'password': hash_pass('password123'),
             'is_admin': False,
-            'exp': 3 + (i % 3)
+            'exp': 3 + (int(uid[-1]) % 3)
         }
 
 def analyze_answer_quality(question, answer, topic):
@@ -166,11 +209,9 @@ def create_test(eng_id, topic):
     counter += 1
     test_id = f"PD_{topic}_{eng_id}_{counter}"
     
-    # ONLY CHANGE: Each engineer gets all 10 questions (instead of 3)
+    # Each engineer gets all 15 questions from their topic
     all_questions = QUESTIONS[topic]
-    
-    # All engineers get all 10 questions from their topic
-    selected_questions = all_questions  # All 10 questions
+    selected_questions = all_questions  # All 15 questions
     
     test = {
         'id': test_id,
@@ -241,8 +282,11 @@ def login():
         </form>
         <div class="info">
             <strong>Test Login:</strong><br>
-            Engineers: eng001, eng002, eng003, eng004, eng005<br>
-            Password: password123
+            Engineers: eng001-eng009<br>
+            Password: password123<br>
+            <small>eng001: Kranthi & Neela | eng002: Bhanu & Lokeshwari | eng003: Nagesh & VJ<br>
+            eng004: Pravalika & Daniel | eng005: Karthik & Hema | eng006: Naveen & Srinivas<br>
+            eng007: Meera & Suraj | eng008: Akhil & Vikas | eng009: Sahith & Sravan</small>
         </div>
     </div>
 </body>
@@ -264,14 +308,15 @@ def admin():
     
     eng_options = ''
     for eng in engineers:
-        eng_options += f'<option value="{eng["id"]}">{eng["username"]} (3+ Experience)</option>'
+        display_name = eng.get('display_name', eng['username'])
+        eng_options += f'<option value="{eng["id"]}">{display_name} (3+ Experience)</option>'
     
     pending_html = ''
     for p in pending:
         pending_html += f'''
         <div style="background: #f8fafc; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <strong>{p["topic"].title()} - {p["engineer_id"]}</strong><br>
-            <small>10 Questions | Max: 100 points</small><br>
+            <strong>{p["topic"].title()} - {users.get(p["engineer_id"], {}).get('display_name', p["engineer_id"])}</strong><br>
+            <small>15 Questions | Max: 150 points</small><br>
             <a href="/admin/review/{p["id"]}" style="background: #10b981; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block; margin-top: 8px;">Review</a>
         </div>'''
     
@@ -310,7 +355,7 @@ def admin():
             <div class="stat"><div class="stat-num">{len(engineers)}</div><div>Engineers</div></div>
             <div class="stat"><div class="stat-num">{len(all_tests)}</div><div>Tests</div></div>
             <div class="stat"><div class="stat-num">{len(pending)}</div><div>Pending</div></div>
-            <div class="stat"><div class="stat-num">30</div><div>Questions</div></div>
+            <div class="stat"><div class="stat-num">45</div><div>Questions</div></div>
         </div>
         
         <div class="card">
@@ -375,7 +420,7 @@ def admin_review(test_id):
     
     if request.method == 'POST':
         total = 0
-        for i in range(10):  # Now 10 questions
+        for i in range(15):  # Now 15 questions
             try:
                 score = float(request.form.get(f'score_{i}', 0))
                 total += score
@@ -481,7 +526,7 @@ def student():
             <div style="background: white; border-radius: 12px; padding: 20px; margin: 15px 0;">
                 <h3>{t["topic"].title()} Test</h3>
                 <div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 12px; border-radius: 8px; text-align: center;">
-                    <strong>Score: {t["score"]}/100</strong>
+                    <strong>Score: {t["score"]}/150</strong>
                 </div>
             </div>'''
         elif status == 'submitted':
@@ -532,7 +577,7 @@ def student():
             <div class="stat"><div style="font-size: 20px; font-weight: bold;">{len(my_tests)}</div><div>Tests</div></div>
             <div class="stat"><div style="font-size: 20px; font-weight: bold;">{len([t for t in my_tests if t['status'] == 'completed'])}</div><div>Done</div></div>
             <div class="stat"><div style="font-size: 20px; font-weight: bold;">{user.get('exp', 0)}y</div><div>Experience</div></div>
-            <div class="stat"><div style="font-size: 20px; font-weight: bold;">10</div><div>Questions</div></div>
+            <div class="stat"><div style="font-size: 20px; font-weight: bold;">15</div><div>Questions</div></div>
         </div>
         
         <div class="section">
@@ -554,12 +599,12 @@ def student_test(test_id):
     
     if request.method == 'POST' and test['status'] == 'pending':
         answers = {}
-        for i in range(10):  # Now 10 questions
+        for i in range(15):  # Now 15 questions
             answer = request.form.get(f'answer_{i}', '').strip()
             if answer:
                 answers[str(i)] = answer
         
-        if len(answers) == 10:  # All 10 must be answered
+        if len(answers) == 15:  # All 15 must be answered
             test['answers'] = answers
             test['status'] = 'submitted'
         
@@ -570,7 +615,7 @@ def student_test(test_id):
         questions_html += f'''
         <div style="background: rgba(255,255,255,0.95); border-radius: 16px; padding: 24px; margin: 20px 0;">
             <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 8px 16px; border-radius: 20px; display: inline-block; margin-bottom: 16px;">
-                Question {i+1} of 10
+                Question {i+1} of 15
             </div>
             <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #667eea;">
                 {q}
